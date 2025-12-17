@@ -1,33 +1,20 @@
+
+
 import java.time.LocalDateTime;
 
 public class Islem {
-
-    private IslemTuru tur;
-    private double tutar;
+    private String islemTipi;
+    private double miktar;
     private LocalDateTime tarih;
-    private String hedefHesapNo;
 
-    public Islem(IslemTuru tur, double tutar, String hedefHesapNo) {
-        this.tur = tur;
-        this.tutar = tutar;
-        this.hedefHesapNo = hedefHesapNo;
+    public Islem(String islemTipi, double miktar) {
+        this.islemTipi = islemTipi;
+        this.miktar = miktar;
         this.tarih = LocalDateTime.now();
     }
 
-    public IslemTuru getTur() {
-        return tur;
-    }
-
-    public double getTutar() {
-        return tutar;
-    }
-
-    public LocalDateTime getTarih() {
-        return tarih;
-    }
-
-    public String getHedefHesapNo() {
-        return hedefHesapNo;
+    @Override
+    public String toString() {
+        return tarih.getHour() + ":" + tarih.getMinute() + " - " + islemTipi + ": " + miktar + " TL";
     }
 }
-

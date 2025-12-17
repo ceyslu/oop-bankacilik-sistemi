@@ -1,45 +1,39 @@
+
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class Hesap {
-
+public abstract class Hesap {
+    private String adSoyad;
     private String hesapNo;
     private double bakiye;
     private List<Islem> islemGecmisi;
 
-    public Hesap(String hesapNo, double bakiye) {
+    public Hesap(String adSoyad, String hesapNo, double bakiye) {
+        this.adSoyad = adSoyad;
         this.hesapNo = hesapNo;
         this.bakiye = bakiye;
         this.islemGecmisi = new ArrayList<>();
     }
 
-    public String getHesapNo() {
-        return hesapNo;
-    }
+    public String getAdSoyad() { return adSoyad; }
+    public String getHesapNo() { return hesapNo; }
+    public double getBakiye() { return bakiye; }
+    public List<Islem> getIslemGecmisi() { return islemGecmisi; }
 
-    public double getBakiye() {
-        return bakiye;
-    }
-
-    public List<Islem> getIslemGecmisi() {
-        return islemGecmisi;
-    }
-
-    public void deposit(double tutar) {
-        if (tutar > 0) {
-            bakiye += tutar;
-            islemGecmisi.add(new Islem(IslemTuru.DEPOSIT, tutar, null));
-        } else {
-            System.out.println("Yatırılacak tutar pozitif olmalıdır.");
+    public void bakiyeEkle(double miktar) {
+        if(miktar > 0) {
+            this.bakiye += miktar;
+            this.islemGecmisi.add(new Islem("Para Yatırma", miktar));
         }
     }
 
-    public boolean withdraw(double tutar) {
-        if (tutar > 0 && bakiye >= tutar) {
-            bakiye -= tutar;
-            islemGecmisi.add(new Islem(IslemTuru.WITHDRAW, tutar, null));
-            return true;
+    public void bakiyeAzalt(double miktar) {
+        if (this.bakiye >= miktar) {
+            this.bakiye -= miktar;
+            this.islemGecmisi.add(new Islem("Para Çekme/Ödeme", miktar));
         }
-        return false;
     }
+
+    public abstract void paraCek(double miktar);
 }
