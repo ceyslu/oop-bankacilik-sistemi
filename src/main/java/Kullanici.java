@@ -1,13 +1,10 @@
-import java.util.ArrayList;
-import java.util.List;
-
-public class Musteri {
+public class Kullanici {
 
     private String tc;
     private String sifre;
     private List<Hesap> hesaplar;
 
-    public Musteri(String tc, String sifre) {
+    public Kullanici(String tc, String sifre) {
         this.tc = tc;
         this.sifre = sifre;
         this.hesaplar = new ArrayList<>();

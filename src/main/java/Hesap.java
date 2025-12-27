@@ -1,39 +1,45 @@
 
-
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class Hesap {
-    private String adSoyad;
-    private String hesapNo;
-    private double bakiye;
-    private List<Islem> islemGecmisi;
+public abstract class Hesap implements ITransferable {
 
-    public Hesap(String adSoyad, String hesapNo, double bakiye) {
-        this.adSoyad = adSoyad;
+    protected String hesapNo;
+    protected double bakiye;
+    protected List<Islem> islemler;
+
+    public Hesap(String hesapNo, double bakiye) {
         this.hesapNo = hesapNo;
         this.bakiye = bakiye;
-        this.islemGecmisi = new ArrayList<>();
+        this.islemler = new ArrayList<>();
     }
 
-    public String getAdSoyad() { return adSoyad; }
-    public String getHesapNo() { return hesapNo; }
-    public double getBakiye() { return bakiye; }
-    public List<Islem> getIslemGecmisi() { return islemGecmisi; }
-
-    public void bakiyeEkle(double miktar) {
-        if(miktar > 0) {
-            this.bakiye += miktar;
-            this.islemGecmisi.add(new Islem("Para Yatırma", miktar));
-        }
+    public double getBakiye() {
+        return bakiye;
     }
 
-    public void bakiyeAzalt(double miktar) {
-        if (this.bakiye >= miktar) {
-            this.bakiye -= miktar;
-            this.islemGecmisi.add(new Islem("Para Çekme/Ödeme", miktar));
-        }
+    public String getHesapNo() {
+        return hesapNo;
     }
 
-    public abstract void paraCek(double miktar);
+    public List<Islem> getIslemler() {
+        return islemler;
+    }
+
+    public void deposit(double miktar) {
+        bakiye += miktar;
+        islemler.add(new Islem(
+                IslemTuru.PARA_YATIRMA,
+                miktar,
+                "Para yatırıldı"
+        ));
+    }
+
+    public abstract void withdraw(double miktar);
+
+    @Override
+    public void transfer(Hesap hedef, double miktar) {
+        this.withdraw(miktar);
+        hedef.deposit(miktar);
+    }
 }

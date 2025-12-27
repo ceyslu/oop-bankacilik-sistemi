@@ -1,14 +1,20 @@
-
-
 public class TasarrufHesabi extends Hesap {
-    public TasarrufHesabi(String adSoyad, String hesapNo, double bakiye) {
-        super(adSoyad, hesapNo, bakiye);
+
+    public TasarrufHesabi(String hesapNo, double bakiye) {
+        super(hesapNo, bakiye);
     }
 
     @Override
-    public void paraCek(double miktar) {
-        if (getBakiye() >= miktar) {
-            bakiyeAzalt(miktar);
+    public void withdraw(double miktar) {
+        if (miktar > bakiye) {
+            throw new RuntimeException("Yetersiz bakiye");
         }
+
+        bakiye -= miktar;
+        islemler.add(new Islem(
+                IslemTuru.PARA_CEKME,
+                miktar,
+                "Tasarruf hesabından çekildi"
+        ));
     }
 }
