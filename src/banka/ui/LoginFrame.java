@@ -48,8 +48,11 @@ public class LoginFrame extends JFrame {
                 Musteri m = banka.girisYap(adSoyad, sifre);
                 sonuc.setText("Giris basarili: " + m.getAdSoyad());
 
-                // Sonraki adimda: MainFrame acacagiz
-                JOptionPane.showMessageDialog(this, "Hosgeldin, " + m.getAdSoyad());
+            MainFrame main = new MainFrame(banka, m);
+              main.setVisible(true);
+              dispose(); // login ekranini kapat
+
+
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Hata", JOptionPane.ERROR_MESSAGE);
             }
