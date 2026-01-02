@@ -2,8 +2,11 @@ package banka.ui;
 
 import banka.model.Musteri;
 import banka.service.Banka;
+import banka.util.MetinUtil;
 import java.awt.*;
+import java.text.ParseException;
 import javax.swing.*;
+import javax.swing.text.MaskFormatter;
 
 public class LoginFrame extends JFrame {
 
@@ -16,12 +19,13 @@ public class LoginFrame extends JFrame {
         setLocationRelativeTo(null);
 
         JTabbedPane tabs = new JTabbedPane();
-
         tabs.addTab("Giris Yap", girisPaneli());
         tabs.addTab("Uye Ol", uyeOlPaneli());
 
-        add(tabs);
+        setContentPane(tabs);
     }
+
+    // ------------------- GIRIS PANELI -------------------
 
     private JPanel girisPaneli() {
         JPanel p = new JPanel(new BorderLayout(10, 10));
@@ -37,36 +41,51 @@ public class LoginFrame extends JFrame {
         form.add(new JLabel("Sifre:"));
         form.add(sifreField);
 
+        JLabel mesajLabel = new JLabel(" ");
+        mesajLabel.setForeground(new Color(200, 0, 0));
+
         JButton girisBtn = new JButton("Giris");
-        JLabel sonuc = new JLabel(" ");
 
         girisBtn.addActionListener(e -> {
+            mesajLabel.setForeground(new Color(200, 0, 0));
+            mesajLabel.setText(" ");
+
             try {
-                String adSoyad = adSoyadField.getText();
+                String adSoyad = MetinUtil.titleCase(adSoyadField.getText());
                 String sifre = new String(sifreField.getPassword());
 
+                if (adSoyad.isBlank()) {
+                    mesajLabel.setText("Ad Soyad bos olamaz.");
+                    return;
+                }
+                MetinUtil.minUzunluk(sifre, 6, "Sifre");
+
+                // UI'da duzeltip gosterelim
+                adSoyadField.setText(adSoyad);
+
                 Musteri m = banka.girisYap(adSoyad, sifre);
-                sonuc.setText("Giris basarili: " + m.getAdSoyad());
 
-            MainFrame main = new MainFrame(banka, m);
-              main.setVisible(true);
-              dispose(); // login ekranini kapat
-
+                // Basarili giris -> MainFrame
+                MainFrame main = new MainFrame(banka, m);
+                main.setVisible(true);
+                dispose();
 
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Hata", JOptionPane.ERROR_MESSAGE);
+                mesajLabel.setText(ex.getMessage());
             }
         });
 
         p.add(form, BorderLayout.CENTER);
 
-        JPanel bottom = new JPanel(new BorderLayout());
+        JPanel bottom = new JPanel(new BorderLayout(10, 10));
+        bottom.add(mesajLabel, BorderLayout.CENTER);
         bottom.add(girisBtn, BorderLayout.EAST);
-        bottom.add(sonuc, BorderLayout.CENTER);
 
         p.add(bottom, BorderLayout.SOUTH);
         return p;
     }
+
+    // ------------------- UYE OL PANELI -------------------
 
     private JPanel uyeOlPaneli() {
         JPanel p = new JPanel(new BorderLayout(10, 10));
@@ -74,42 +93,86 @@ public class LoginFrame extends JFrame {
 
         JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
 
-        JTextField tcField = new JTextField();
+        // TC mask: 11 hane, sadece rakam
+        JFormattedTextField tcField = new JFormattedTextField(createTcMask());
+        tcField.setColumns(11);
+
         JTextField adSoyadField = new JTextField();
         JPasswordField sifreField = new JPasswordField();
 
-        form.add(new JLabel("TC:"));
+        form.add(new JLabel("TC (11 hane):"));
         form.add(tcField);
         form.add(new JLabel("Ad Soyad:"));
         form.add(adSoyadField);
-        form.add(new JLabel("Sifre:"));
+        form.add(new JLabel("Sifre (min 6):"));
         form.add(sifreField);
 
+        JLabel mesajLabel = new JLabel(" ");
+        mesajLabel.setForeground(new Color(200, 0, 0));
+
         JButton uyeOlBtn = new JButton("Uye Ol");
-        JLabel sonuc = new JLabel(" ");
 
         uyeOlBtn.addActionListener(e -> {
+            mesajLabel.setForeground(new Color(200, 0, 0));
+            mesajLabel.setText(" ");
+
             try {
-                String tc = tcField.getText();
-                String adSoyad = adSoyadField.getText();
+                String tc = MetinUtil.sadeceRakam(tcField.getText());
+                String adSoyad = MetinUtil.titleCase(adSoyadField.getText());
                 String sifre = new String(sifreField.getPassword());
 
-                Musteri m = banka.uyeOl(tc, adSoyad, sifre);
-                sonuc.setText("Kayit basarili: " + m.getAdSoyad());
+                // TC 11 hane
+                if (tc.length() != 11) {
+                    mesajLabel.setText("TC 11 haneli olmali.");
+                    return;
+                }
 
-                JOptionPane.showMessageDialog(this, "Kayit olustu! Simdi Giris Yap sekmesinden giris yapabilirsin.");
+                // ad soyad 2 kelime
+                if (adSoyad.isBlank() || adSoyad.split(" ").length < 2) {
+                    mesajLabel.setText("Ad Soyad en az 2 kelime olmali.");
+                    return;
+                }
+
+                // sifre min 6
+                MetinUtil.minUzunluk(sifre, 6, "Sifre");
+
+                // UI'da duzeltip gosterelim
+                adSoyadField.setText(adSoyad);
+
+                banka.uyeOl(tc, adSoyad, sifre);
+
+                mesajLabel.setForeground(new Color(0, 140, 0));
+                mesajLabel.setText("Kayit basarili! Giris Yap sekmesinden giris yapabilirsin.");
+
+                // istersen formu temizle:
+                // tcField.setValue(null);
+                // adSoyadField.setText("");
+                // sifreField.setText("");
+
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Hata", JOptionPane.ERROR_MESSAGE);
+                mesajLabel.setText(ex.getMessage());
             }
         });
 
         p.add(form, BorderLayout.CENTER);
 
-        JPanel bottom = new JPanel(new BorderLayout());
+        JPanel bottom = new JPanel(new BorderLayout(10, 10));
+        bottom.add(mesajLabel, BorderLayout.CENTER);
         bottom.add(uyeOlBtn, BorderLayout.EAST);
-        bottom.add(sonuc, BorderLayout.CENTER);
 
         p.add(bottom, BorderLayout.SOUTH);
         return p;
+    }
+
+    // ------------------- HELPERS -------------------
+
+    private MaskFormatter createTcMask() {
+        try {
+            MaskFormatter mf = new MaskFormatter("###########");
+            mf.setPlaceholderCharacter('_');
+            return mf;
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
