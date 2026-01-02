@@ -4,15 +4,6 @@ import java.math.BigDecimal;
 
 public class AltinCuzdan {
 
-public void gramAyarla(BigDecimal yeniGram) {
-    if (yeniGram == null || yeniGram.compareTo(BigDecimal.ZERO) < 0) {
-        throw new IllegalArgumentException("Gram negatif olamaz.");
-    }
-    gram = yeniGram;
-}
-
-
-
     private BigDecimal gram = BigDecimal.ZERO;
 
     public BigDecimal getGram() {
@@ -20,9 +11,16 @@ public void gramAyarla(BigDecimal yeniGram) {
     }
 
     public void gramEkle(BigDecimal eklenecek) {
-        if (eklenecek == null || eklenecek.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Gram pozitif olmali.");
-        }
+        if (eklenecek == null || eklenecek.compareTo(BigDecimal.ZERO) <= 0)
+            throw new IllegalArgumentException("Gram pozitif olmali");
+
         gram = gram.add(eklenecek);
+    }
+
+    public void gramAyarla(BigDecimal yeniGram) {
+        if (yeniGram == null || yeniGram.compareTo(BigDecimal.ZERO) < 0)
+            throw new IllegalArgumentException("Gram negatif olamaz");
+
+        gram = yeniGram;
     }
 }

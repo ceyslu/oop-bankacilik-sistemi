@@ -1,7 +1,6 @@
 package banka.hesap;
 
 import banka.islem.IslemGecmisi;
-
 import java.math.BigDecimal;
 
 public abstract class Hesap {
@@ -32,5 +31,9 @@ public abstract class Hesap {
         }
     }
 
-    public abstract void aySonuIslemleri(IslemGecmisi gecmis);
+    public abstract void aySonuIslemleri(IslemGecmisi gecmis);// SADECE dosyadan yukleme icin
+
+
+
 }
+

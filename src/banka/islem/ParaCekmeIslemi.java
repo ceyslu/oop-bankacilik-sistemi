@@ -1,19 +1,17 @@
 package banka.islem;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public class ParaCekmeIslemi extends Islem {
-    private final String hesapNo;
-    private final BigDecimal tutar;
 
     public ParaCekmeIslemi(String hesapNo, BigDecimal tutar) {
-        super("Para cekme");
-        this.hesapNo = hesapNo;
-        this.tutar = tutar;
+        super(hesapNo, tutar, "Para Cekme", LocalDateTime.now());
     }
 
     @Override
     public String ozet() {
-        return getZaman() + " | " + hesapNo + " | - " + tutar + " TL";
+        return getTarih() + " | " + getIslemTuru() + " | Hesap: " + getHesapNo() + " | -" + getTutar() + " TL";
     }
 }
+

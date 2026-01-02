@@ -3,7 +3,7 @@ package banka.hesap;
 import banka.islem.AltinAlimIslemi;
 import banka.islem.BilgiIslemi;
 import banka.islem.IslemGecmisi;
-
+import banka.islem.ParaCekmeIslemi;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -15,17 +15,18 @@ public class TasarrufHesabi extends Hesap {
         super(hesapNo);
     }
 
+    /* ================= ALTIN ================= */
+
     public BigDecimal getAltinGram() {
         return altinCuzdan.getGram();
     }
 
     public void altinAl(BigDecimal tlTutar, BigDecimal gramFiyat, IslemGecmisi gecmis) {
-        if (tlTutar == null || tlTutar.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("TL tutari pozitif olmali.");
-        }
-        if (gramFiyat == null || gramFiyat.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Gram fiyati pozitif olmali.");
-        }
+        if (tlTutar == null || tlTutar.compareTo(BigDecimal.ZERO) <= 0)
+            throw new IllegalArgumentException("TL tutari pozitif olmali");
+
+        if (gramFiyat == null || gramFiyat.compareTo(BigDecimal.ZERO) <= 0)
+            throw new IllegalArgumentException("Gram fiyati pozitif olmali");
 
         bakiyeKontrol(tlTutar);
         bakiyeAzalt(tlTutar);
@@ -35,17 +36,27 @@ public class TasarrufHesabi extends Hesap {
 
         gecmis.ekle(new AltinAlimIslemi(getHesapNo(), tlTutar, gramFiyat, gram));
     }
+public void paraCek(BigDecimal tutar, banka.islem.IslemGecmisi gecmis) {
+    tlDus(tutar, gecmis);
+}
+
+    /* ========== SADECE KENDİ HESAPLAR ARASI ========== */
+
+    public void tlDus(BigDecimal tutar, IslemGecmisi gecmis) {
+        if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0)
+            throw new IllegalArgumentException("Tutar pozitif olmali");
+
+        bakiyeKontrol(tutar);
+        bakiyeAzalt(tutar);
+
+        gecmis.ekle(new ParaCekmeIslemi(getHesapNo(), tutar));
+    }
 
     @Override
     public void aySonuIslemleri(IslemGecmisi gecmis) {
-        gecmis.ekle(new BilgiIslemi(getHesapNo(),
-                "Ay sonu ozeti: TL=" + getBakiye() + ", Altin(gram)=" + altinCuzdan.getGram()));
+        gecmis.ekle(new BilgiIslemi(
+                getHesapNo(),
+                "Ay sonu: TL=" + getBakiye() + " Altin=" + altinCuzdan.getGram()
+        ));
     }
-    public void altinGramAyarla(java.math.BigDecimal gram) {
-    if (gram == null || gram.compareTo(java.math.BigDecimal.ZERO) < 0) {
-        throw new IllegalArgumentException("Altin gram negatif olamaz.");
-    }
-    // AltinCuzdan icine setter yoktu; pratik çözüm: yeni cuzdan yerine mevcutu doldurmak
-    // Bunun icin AltinCuzdan'a da bir metod ekleyecegiz (asagida).
-    altinCuzdan.gramAyarla(gram);
-}}
+}

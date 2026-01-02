@@ -1,17 +1,25 @@
 package banka.islem;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public abstract class Islem {
-    private final LocalDateTime zaman = LocalDateTime.now();
-    private final String aciklama;
+    private final String hesapNo;
+    private final BigDecimal tutar;
+    private final String islemTuru;
+    private final LocalDateTime tarih;
 
-    protected Islem(String aciklama) {
-        this.aciklama = aciklama;
+    protected Islem(String hesapNo, BigDecimal tutar, String islemTuru, LocalDateTime tarih) {
+        this.hesapNo = hesapNo;
+        this.tutar = tutar;
+        this.islemTuru = islemTuru;
+        this.tarih = tarih;
     }
 
-    public LocalDateTime getZaman() { return zaman; }
-    public String getAciklama() { return aciklama; }
+    public String getHesapNo() { return hesapNo; }
+    public BigDecimal getTutar() { return tutar; }
+    public String getIslemTuru() { return islemTuru; }
+    public LocalDateTime getTarih() { return tarih; }
 
     public abstract String ozet();
 }
