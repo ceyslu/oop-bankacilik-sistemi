@@ -5,6 +5,10 @@ import banka.hesap.VadesizHesap;
 import banka.islem.IslemGecmisi;
 
 public class Musteri {
+    public String getSifreHash() {
+    return sifreHash;
+}
+
     private final String tc;
     private final String adSoyad;
     private final String sifreHash;

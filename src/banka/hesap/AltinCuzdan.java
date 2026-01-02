@@ -3,6 +3,16 @@ package banka.hesap;
 import java.math.BigDecimal;
 
 public class AltinCuzdan {
+
+public void gramAyarla(BigDecimal yeniGram) {
+    if (yeniGram == null || yeniGram.compareTo(BigDecimal.ZERO) < 0) {
+        throw new IllegalArgumentException("Gram negatif olamaz.");
+    }
+    gram = yeniGram;
+}
+
+
+
     private BigDecimal gram = BigDecimal.ZERO;
 
     public BigDecimal getGram() {

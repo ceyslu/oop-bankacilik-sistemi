@@ -41,5 +41,11 @@ public class TasarrufHesabi extends Hesap {
         gecmis.ekle(new BilgiIslemi(getHesapNo(),
                 "Ay sonu ozeti: TL=" + getBakiye() + ", Altin(gram)=" + altinCuzdan.getGram()));
     }
-}
-
+    public void altinGramAyarla(java.math.BigDecimal gram) {
+    if (gram == null || gram.compareTo(java.math.BigDecimal.ZERO) < 0) {
+        throw new IllegalArgumentException("Altin gram negatif olamaz.");
+    }
+    // AltinCuzdan icine setter yoktu; pratik çözüm: yeni cuzdan yerine mevcutu doldurmak
+    // Bunun icin AltinCuzdan'a da bir metod ekleyecegiz (asagida).
+    altinCuzdan.gramAyarla(gram);
+}}
