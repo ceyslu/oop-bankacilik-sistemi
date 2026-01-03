@@ -1,75 +1,79 @@
 package banka.hesap;
 
 import banka.islem.AltinAlimIslemi;
-import banka.islem.BilgiIslemi;
 import banka.islem.IslemGecmisi;
 import banka.islem.ParaCekmeIslemi;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TasarrufHesabi extends Hesap {
 
     private final AltinCuzdan altinCuzdan = new AltinCuzdan();
+    private List<String> kisiselGecmis = new ArrayList<>();
 
     public TasarrufHesabi(String hesapNo) {
         super(hesapNo);
+        gecmisEkle("[SİSTEM] TASARRUF HESABI AÇILIŞI");
     }
 
-    /* ===================== ALTIN ===================== */
+    public BigDecimal getAltinGram() { return altinCuzdan.getGram(); }
 
-    public BigDecimal getAltinGram() {
-        return altinCuzdan.getGram();
-    }
-
-    // Altin alimi (sadece tasarruf hesabinda)
     public void altinAl(BigDecimal tlTutar, BigDecimal gramFiyat, IslemGecmisi gecmis) {
-        if (tlTutar == null || tlTutar.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("TL tutari pozitif olmali.");
-        }
-        if (gramFiyat == null || gramFiyat.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Gram fiyati pozitif olmali.");
-        }
-
+        if (tlTutar.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalArgumentException("Hatalı Tutar");
+        
         bakiyeKontrol(tlTutar);
         bakiyeAzalt(tlTutar);
 
         BigDecimal gram = tlTutar.divide(gramFiyat, 4, RoundingMode.HALF_UP);
         altinCuzdan.gramEkle(gram);
 
-        gecmis.ekle(new AltinAlimIslemi(getHesapNo(), tlTutar, gramFiyat, gram));
+        gecmisEkle("[ALTIN] ALIM: " + gram + " GR | -" + tlTutar + " TL");
+        
+        if (gecmis != null) gecmis.ekle(new AltinAlimIslemi(getHesapNo(), tlTutar, gramFiyat, gram));
     }
 
-    /* ===================== KENDI HESAPLAR ARASI ===================== */
-
-    // Tasarruf -> Vadesiz TL aktarimi icin
     public void paraCek(BigDecimal tutar, IslemGecmisi gecmis) {
-        if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Tutar pozitif olmali.");
-        }
-
+        if (tutar.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalArgumentException("Hatalı Tutar");
         bakiyeKontrol(tutar);
         bakiyeAzalt(tutar);
 
-        gecmis.ekle(new ParaCekmeIslemi(getHesapNo(), tutar));
+        gecmisEkle("[GİDER] ÇIKIŞ | -" + tutar + " TL");
+
+        if (gecmis != null) gecmis.ekle(new ParaCekmeIslemi(getHesapNo(), tutar));
     }
 
-    /* ===================== DOSYADAN YUKLEME ===================== */
-
-    // SADECE dosyadan yukleme icin
-    public void altinGramAyarla(BigDecimal gram) {
-        altinCuzdan.gramAyarla(gram);
+    @Override
+    public void paraYatir(BigDecimal tutar) {
+        super.paraYatir(tutar);
+        gecmisEkle("[GELİR] GİRİŞ | +" + tutar + " TL");
     }
 
-    /* ===================== AY SONU ===================== */
+    // --- GEÇMİŞ YÖNETİMİ ---
+    
+    // PUBLIC yaptık
+    public void gecmisEkle(String mesaj) {
+        kisiselGecmis.add(mesaj);
+    }
+    
+    public void sonGecmisiSil() {
+        if (!kisiselGecmis.isEmpty()) kisiselGecmis.remove(kisiselGecmis.size() - 1);
+    }
+
+    public void altinGramAyarla(BigDecimal gram) { altinCuzdan.gramAyarla(gram); }
+
+    public String getIslemGecmisi() {
+        if (kisiselGecmis.isEmpty()) return "İşlem Yok.";
+        StringBuilder sb = new StringBuilder();
+        for (int i = kisiselGecmis.size() - 1; i >= 0; i--) {
+            sb.append(kisiselGecmis.get(i)).append("\n--------------------------------\n");
+        }
+        return sb.toString();
+    }
 
     @Override
     public void aySonuIslemleri(IslemGecmisi gecmis) {
-        gecmis.ekle(
-                new BilgiIslemi(
-                        getHesapNo(),
-                        "Ay sonu ozeti | TL=" + getBakiye()
-                                + " | Altin=" + altinCuzdan.getGram() + " gr"
-                )
-        );
+        gecmisEkle("[EKSTRE] TL: " + getBakiye() + " | ALTIN: " + getAltinGram() + " GR");
     }
 }

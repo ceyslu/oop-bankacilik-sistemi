@@ -32,6 +32,11 @@ public abstract class Hesap {
 
     public abstract void aySonuIslemleri(IslemGecmisi gecmis);// SADECE dosyadan yukleme icin
 
+    public void paraCek(BigDecimal tutar, IslemGecmisi gecmis) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'paraCek'");
+    }
+
 
 
 }
