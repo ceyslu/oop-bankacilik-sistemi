@@ -2,7 +2,7 @@ package banka.service;
 
 import banka.hesap.TasarrufHesabi;
 import banka.hesap.VadesizHesap;
-import banka.islem.BilgiIslemi; // Loglama için
+import banka.islem.BilgiIslemi;
 import banka.islem.IslemGecmisi;
 import banka.model.Musteri;
 import java.io.*;
@@ -86,7 +86,7 @@ public class Banka {
         return yeni;
     }
 
-    /* ===================== DOSYA ===================== */
+    /* ===================== DOSYA ISLEMLERI (FIX) ===================== */
 
     private void dosyadanYukle() {
         File f = new File(DOSYA_YOLU);
@@ -99,33 +99,46 @@ public class Banka {
                 if (line.isEmpty()) continue;
 
                 String[] p = line.split(";");
+                // Beklenen: TC;AdSoyad;Sifre;VNo;VBakiye;TNo;TBakiye;Gram
                 if (p.length < 7) continue;
 
-                String tc = p[0];
-                String adSoyad = p[1];
-                String sifreHash = p[2];
+                try {
+                    String tc = p[0];
+                    String adSoyad = p[1];
+                    String sifreHash = p[2];
 
-                String vNo = p[3];
-                BigDecimal vB = new BigDecimal(p[4]);
+                    String vNo = p[3];
+                    BigDecimal vB = new BigDecimal(p[4]);
 
-                String tNo = p[5];
-                BigDecimal tB = new BigDecimal(p[6]);
+                    String tNo = p[5];
+                    BigDecimal tB = new BigDecimal(p[6]);
 
-                BigDecimal gram = BigDecimal.ZERO;
-                if (p.length >= 8) gram = new BigDecimal(p[7]);
+                    BigDecimal gram = BigDecimal.ZERO;
+                    if (p.length >= 8) gram = new BigDecimal(p[7]);
 
-                VadesizHesap vadesiz = new VadesizHesap(vNo);
-                vadesiz.paraYatir(vB);
+                    VadesizHesap vadesiz = new VadesizHesap(vNo);
+                    // DÜZELTME: Bakiye 0'dan büyükse yatır, yoksa hata verir
+                    if (vB.compareTo(BigDecimal.ZERO) > 0) {
+                        vadesiz.paraYatir(vB);
+                    }
 
-                TasarrufHesabi tasarruf = new TasarrufHesabi(tNo);
-                tasarruf.paraYatir(tB);
-                tasarruf.altinGramAyarla(gram);
+                    TasarrufHesabi tasarruf = new TasarrufHesabi(tNo);
+                    // DÜZELTME: Bakiye 0'dan büyükse yatır
+                    if (tB.compareTo(BigDecimal.ZERO) > 0) {
+                        tasarruf.paraYatir(tB);
+                    }
+                    tasarruf.altinGramAyarla(gram);
 
-                Musteri m = new Musteri(tc, adSoyad, sifreHash, vadesiz, tasarruf);
-                musteriler.put(tc, m);
+                    Musteri m = new Musteri(tc, adSoyad, sifreHash, vadesiz, tasarruf);
+                    musteriler.put(tc, m);
+                    
+                } catch (Exception e) {
+                    // Tek bir satır hatalıysa program çökmesin, o satırı atlasın
+                    System.err.println("Satır okuma hatası: " + line + " -> " + e.getMessage());
+                }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Dosyadan yükleme hatası: " + e.getMessage(), e);
+            System.err.println("Dosya genel hatası: " + e.getMessage());
         }
     }
 
@@ -155,7 +168,7 @@ public class Banka {
         }
     }
 
-    /* ===================== ISLEM MANTIKLARI (DÜZELTİLDİ) ===================== */
+    /* ===================== ISLEM MANTIKLARI ===================== */
 
     // 1. Kendi Hesapları Arası Transfer
     public void kendiHesaplarimArasiTransfer(Musteri musteri, boolean vadesizdenTasarrufa, BigDecimal tutar) {
@@ -164,21 +177,22 @@ public class Banka {
             musteri.getVadesiz().paraCek(tutar, islemGecmisi);
             musteri.getTasarruf().paraYatir(tutar);
             
-            islemGecmisi.ekle(new BilgiIslemi(musteri.getAdSoyad(), "Virman: Vadesiz -> Tasarruf (" + tutar + " TL)"));
+            // Loglama: Hesap numarasını gönderiyoruz
+            islemGecmisi.ekle(new BilgiIslemi(musteri.getVadesiz().getHesapNo(), 
+                "Virman: Vadesiz -> Tasarruf (" + tutar + " TL)"));
         } else {
             // Tasarruf -> Vadesiz
             musteri.getTasarruf().paraCek(tutar, islemGecmisi);
             musteri.getVadesiz().paraYatir(tutar);
             
-            islemGecmisi.ekle(new BilgiIslemi(musteri.getAdSoyad(), "Virman: Tasarruf -> Vadesiz (" + tutar + " TL)"));
+            islemGecmisi.ekle(new BilgiIslemi(musteri.getTasarruf().getHesapNo(), 
+                "Virman: Tasarruf -> Vadesiz (" + tutar + " TL)"));
         }
-        // İşlem bitince kaydet
         dosyayaKaydet();
     }
 
     // 2. Başkasına Transfer (Vadesizden gider)
     public void transferYap(Musteri gonderen, String aliciHesapNo, String aliciAdSoyad, BigDecimal tutar) {
-        // Alıcıyı bul (Hesap nosuna göre tüm müşterileri gez)
         Musteri alici = null;
         for (Musteri m : musteriler.values()) {
             if (m.getVadesiz().getHesapNo().equals(aliciHesapNo)) {
@@ -190,34 +204,30 @@ public class Banka {
         if (alici == null) {
             throw new IllegalArgumentException("Alıcı hesap numarası bulunamadı.");
         }
-
-        // İsim kontrolü (Güvenlik)
         if (!alici.getAdSoyad().equalsIgnoreCase(aliciAdSoyad)) {
             throw new IllegalArgumentException("Alıcı Ad Soyad bilgisi uyuşmuyor.");
         }
-
         if (gonderen.getTc().equals(alici.getTc())) {
             throw new IllegalArgumentException("Kendinize bu menüden transfer yapamazsınız.");
         }
 
         // Transfer işlemi
-        gonderen.getVadesiz().paraCek(tutar, islemGecmisi); // Gönderenden düş
-        alici.getVadesiz().paraYatir(tutar);                // Alıcıya ekle
+        gonderen.getVadesiz().paraCek(tutar, islemGecmisi); 
+        alici.getVadesiz().paraYatir(tutar);                
 
         // Log ekle
-        islemGecmisi.ekle(new BilgiIslemi(gonderen.getAdSoyad(), 
-            "EFT Giden: " + alici.getAdSoyad() + " (" + tutar + " TL)"));
+        islemGecmisi.ekle(new BilgiIslemi(gonderen.getVadesiz().getHesapNo(), 
+            "EFT Giden -> " + alici.getAdSoyad() + ": " + tutar + " TL"));
 
         dosyayaKaydet();
     }
 
     // 3. Altın Al (Vadesizden TL düşer, Tasarrufa Altın ekler)
     public void altinAl(Musteri musteri, BigDecimal tlTutar, BigDecimal gramFiyat) {
-        // 1. Vadesizden TL çek
+        // Vadesizden TL çek
         musteri.getVadesiz().paraCek(tlTutar, islemGecmisi);
 
-        // 2. Tasarruf hesabına Altın al komutunu gönder
-        // (TasarrufHesabi sınıfında yazdığımız 'altinAl' metodu çalışacak)
+        // Tasarruf hesabına Altın al komutunu gönder
         musteri.getTasarruf().altinAl(tlTutar, gramFiyat, islemGecmisi);
 
         dosyayaKaydet();
