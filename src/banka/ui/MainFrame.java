@@ -11,234 +11,304 @@ public class MainFrame extends JFrame {
     private final Banka banka;
     private final Musteri musteri;
 
-    private final JPanel contentPanel = new JPanel(new CardLayout());
-    private JLabel lblBilgi;
+    private CardLayout cardLayout;
+    private JPanel mainPanel;
+
+    // Bakiyeyi göstermek için etiket
+    private JLabel lblVadesizBilgi;
 
     public MainFrame(Banka banka, Musteri musteri) {
         this.banka = banka;
         this.musteri = musteri;
 
-        setTitle("Bankacılık Sistemi");
-        setSize(900, 550);
+        // Başlıkta hata olmasın diye kontrol ekledik
+        String ad = (musteri != null) ? musteri.getAdSoyad() : "Değerli Müşterimiz";
+        setTitle("Bankacılık - " + ad);
+        
+        setSize(400, 600); 
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(new BorderLayout());
+        setResizable(false);
 
-        add(ustPanel(), BorderLayout.NORTH);
-        add(solMenu(), BorderLayout.WEST);
-        add(icerikPaneli(), BorderLayout.CENTER);
+        // --- ANA YAPI ---
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
 
-        guncelleUstBilgi();
+        // --- SAYFALARI EKLİYORUZ ---
+        mainPanel.add(anaMenuOlustur(), "ANA_MENU");
+        mainPanel.add(vadesizEkraniOlustur(), "VADESIZ_EKRAN");
+        mainPanel.add(virmanEkraniOlustur(), "VIRMAN_EKRAN");
+        mainPanel.add(eftEkraniOlustur(), "EFT_EKRAN");
+        mainPanel.add(tasarrufEkraniOlustur(), "TASARRUF_EKRAN");
+        mainPanel.add(gecmisEkraniOlustur(), "GECMIS_EKRAN");
+
+        add(mainPanel);
     }
 
-    /* ===================== ÜST PANEL ===================== */
+    // ========================================================================
+    // 1. ANA MENÜ
+    // ========================================================================
+    private JPanel anaMenuOlustur() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(new Color(240, 245, 250));
 
-    private JPanel ustPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
-        panel.setBackground(new Color(220, 245, 230));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 0, 10, 0); 
+        gbc.gridx = 0; 
 
-        lblBilgi = new JLabel();
-        lblBilgi.setFont(new Font("Arial", Font.BOLD, 13));
-
-        JButton btnGeri = new JButton("< Geri");
-        btnGeri.setFocusPainted(false);
-        btnGeri.addActionListener(e -> {
-            dispose();     
-            new LoginFrame(banka).setVisible(true);
+        // Butonlar
+        JButton btnVadesiz = ortaBoyButonYap("VADESİZ HESAP");
+        btnVadesiz.addActionListener(e -> {
+            bilgileriGuncelle(); // Tıklayınca bakiyeyi güncelle
+            cardLayout.show(mainPanel, "VADESIZ_EKRAN");
         });
 
-        panel.add(lblBilgi, BorderLayout.WEST);
-        panel.add(btnGeri, BorderLayout.EAST);
-        return panel;
+        JButton btnTasarruf = ortaBoyButonYap("TASARRUF HESABI");
+        btnTasarruf.addActionListener(e -> cardLayout.show(mainPanel, "TASARRUF_EKRAN"));
+
+        JButton btnGecmis = ortaBoyButonYap("İŞLEM GEÇMİŞİ");
+        btnGecmis.addActionListener(e -> cardLayout.show(mainPanel, "GECMIS_EKRAN"));
+
+        gbc.gridy = 0; panel.add(btnVadesiz, gbc);
+        gbc.gridy = 1; panel.add(btnTasarruf, gbc);
+        gbc.gridy = 2; panel.add(btnGecmis, gbc);
+
+        // Çıkış Butonu
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.add(panel, BorderLayout.CENTER);
+        
+        JButton btnCikis = new JButton("Çıkış");
+        btnCikis.addActionListener(e -> {
+            dispose();
+            new LoginFrame(banka).setVisible(true);
+        });
+        
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        bottom.setBackground(new Color(240, 245, 250));
+        bottom.add(btnCikis);
+        wrapper.add(bottom, BorderLayout.SOUTH);
+
+        return wrapper;
     }
 
-    private void guncelleUstBilgi() {
-        // Null kontrolü ekleyelim ki hata vermesin
-        if (musteri != null && musteri.getVadesiz() != null) {
-            lblBilgi.setText(
-                    "Vadesiz: " + musteri.getVadesiz().getHesapNo() +
-                            " | Bakiye: " + musteri.getVadesiz().getBakiye() + " TL"
-            );
+    // ========================================================================
+    // 2. VADESİZ HESAP EKRANI
+    // ========================================================================
+    private JPanel vadesizEkraniOlustur() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Color.WHITE);
+
+        // Üst Kısım: Bakiye Bilgisi
+        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        infoPanel.setBackground(new Color(220, 240, 255)); 
+        infoPanel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
+        
+        lblVadesizBilgi = new JLabel("Yükleniyor...", SwingConstants.CENTER);
+        lblVadesizBilgi.setFont(new Font("Arial", Font.BOLD, 15));
+        infoPanel.add(lblVadesizBilgi);
+        p.add(infoPanel, BorderLayout.NORTH);
+
+        // Orta Kısım: Butonlar
+        JPanel buttonPanel = new JPanel(new GridBagLayout());
+        buttonPanel.setBackground(Color.WHITE);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 0, 10, 0);
+        gbc.gridx = 0;
+
+        JButton btnTransfer = ortaBoyButonYap("PARA TRANSFERİ");
+        JButton btnFatura = ortaBoyButonYap("FATURA YATIR");
+
+        // TRANSFER SEÇENEKLERİ
+        btnTransfer.addActionListener(e -> {
+            String[] secenekler = {"Kendi Hesaplarım Arası", "Başka Hesaba (EFT)"};
+            int secim = JOptionPane.showOptionDialog(this, 
+                    "Transfer türünü seçiniz:", "Transfer", 
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, 
+                    null, secenekler, secenekler[0]);
+
+            if (secim == 0) cardLayout.show(mainPanel, "VIRMAN_EKRAN");
+            else if (secim == 1) cardLayout.show(mainPanel, "EFT_EKRAN");
+        });
+
+        // Fatura butonu
+        btnFatura.addActionListener(e -> {
+            JOptionPane.showMessageDialog(this, "Ödenecek fatura bulunamadı.");
+        });
+
+        gbc.gridy = 0; buttonPanel.add(btnTransfer, gbc);
+        gbc.gridy = 1; buttonPanel.add(btnFatura, gbc);
+        p.add(buttonPanel, BorderLayout.CENTER);
+
+        // Alt Kısım: Geri Dön
+        JButton btnGeri = new JButton("<< Ana Menüye Dön");
+        btnGeri.setPreferredSize(new Dimension(380, 40));
+        btnGeri.addActionListener(e -> cardLayout.show(mainPanel, "ANA_MENU"));
+        p.add(btnGeri, BorderLayout.SOUTH);
+
+        return p;
+    }
+
+    // ========================================================================
+    // 3. VİRMAN EKRANI
+    // ========================================================================
+    private JPanel virmanEkraniOlustur() {
+        JPanel p = new JPanel(new GridBagLayout());
+        p.setBorder(BorderFactory.createTitledBorder("Hesaplarım Arası Transfer"));
+        
+        JTextField txtTutar = new JTextField(15);
+        JButton btnGonder = new JButton("Transfer Yap");
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.gridx = 0; gbc.gridy = 0;
+        
+        p.add(new JLabel("Vadesiz -> Tasarruf Hesabına"), gbc);
+        
+        gbc.gridy = 1; p.add(new JLabel("Tutar (TL):"), gbc);
+        gbc.gridy = 2; p.add(txtTutar, gbc);
+        gbc.gridy = 3; p.add(btnGonder, gbc);
+
+        btnGonder.addActionListener(e -> {
+            try {
+                BigDecimal tutar = new BigDecimal(txtTutar.getText());
+                if(banka != null) {
+                    banka.kendiHesaplarimArasiTransfer(musteri, true, tutar);
+                    JOptionPane.showMessageDialog(this, "Transfer Başarılı!");
+                    txtTutar.setText("");
+                    bilgileriGuncelle();
+                    cardLayout.show(mainPanel, "VADESIZ_EKRAN"); 
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Hata: " + ex.getMessage());
+            }
+        });
+
+        // İptal Butonu
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.add(p, BorderLayout.CENTER);
+        JButton btnGeri = new JButton("<< İptal");
+        btnGeri.addActionListener(e -> cardLayout.show(mainPanel, "VADESIZ_EKRAN"));
+        wrapper.add(btnGeri, BorderLayout.SOUTH);
+        return wrapper;
+    }
+
+    // ========================================================================
+    // 4. EFT EKRANI
+    // ========================================================================
+    private JPanel eftEkraniOlustur() {
+        JPanel p = new JPanel(new GridBagLayout());
+        p.setBorder(BorderFactory.createTitledBorder("Başka Hesaba Transfer (EFT)"));
+
+        JTextField txtHesap = new JTextField(15);
+        JTextField txtAd = new JTextField(15);
+        JTextField txtTutar = new JTextField(15);
+        JButton btnGonder = new JButton("Parayı Gönder");
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.gridx = 0; gbc.gridy = 0;
+
+        p.add(new JLabel("Alıcı Hesap No:"), gbc);
+        gbc.gridy++; p.add(txtHesap, gbc);
+
+        gbc.gridy++; p.add(new JLabel("Alıcı Ad Soyad:"), gbc);
+        gbc.gridy++; p.add(txtAd, gbc);
+
+        gbc.gridy++; p.add(new JLabel("Tutar (TL):"), gbc);
+        gbc.gridy++; p.add(txtTutar, gbc);
+
+        gbc.gridy++; gbc.fill = GridBagConstraints.HORIZONTAL;
+        p.add(btnGonder, gbc);
+
+        btnGonder.addActionListener(e -> {
+            try {
+                BigDecimal tutar = new BigDecimal(txtTutar.getText());
+                if(banka != null) {
+                    banka.transferYap(musteri, txtHesap.getText(), txtAd.getText(), tutar);
+                    JOptionPane.showMessageDialog(this, "Para Gönderildi.");
+                    txtHesap.setText(""); txtAd.setText(""); txtTutar.setText("");
+                    bilgileriGuncelle();
+                    cardLayout.show(mainPanel, "VADESIZ_EKRAN");
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Hata: " + ex.getMessage());
+            }
+        });
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.add(p, BorderLayout.CENTER);
+        JButton btnGeri = new JButton("<< İptal");
+        btnGeri.addActionListener(e -> cardLayout.show(mainPanel, "VADESIZ_EKRAN"));
+        wrapper.add(btnGeri, BorderLayout.SOUTH);
+        return wrapper;
+    }
+
+    // ========================================================================
+    // DİĞER EKRANLAR
+    // ========================================================================
+    private JPanel tasarrufEkraniOlustur() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.add(new JLabel("Tasarruf Ekranı", SwingConstants.CENTER));
+        JButton btnGeri = new JButton("<< Ana Menü");
+        btnGeri.addActionListener(e -> cardLayout.show(mainPanel, "ANA_MENU"));
+        p.add(btnGeri, BorderLayout.NORTH);
+        return p;
+    }
+
+    private JPanel gecmisEkraniOlustur() {
+        JPanel p = new JPanel(new BorderLayout());
+        JTextArea area = new JTextArea();
+        area.setEditable(false);
+        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        
+        // --- HATA ÇÖZÜMÜ ---
+        // VadesizHesap sınıfında 'getIslemGecmisi' metodu olmadığı için
+        // burada o kodu çağırmıyoruz, sadece statik bir yazı gösteriyoruz.
+        area.setText("İşlem geçmişi özelliği henüz VadesizHesap sınıfına eklenmedi.");
+        // -------------------
+        
+        p.add(new JScrollPane(area), BorderLayout.CENTER);
+        
+        JButton btnGeri = new JButton("<< Ana Menü");
+        btnGeri.addActionListener(e -> cardLayout.show(mainPanel, "ANA_MENU"));
+        
+        p.add(btnGeri, BorderLayout.SOUTH);
+        return p;
+    }
+
+    // ========================================================================
+    // YARDIMCI METOTLAR
+    // ========================================================================
+    private void bilgileriGuncelle() {
+        // Eğer veri yoksa güncelleme yapma
+        if (musteri == null || musteri.getVadesiz() == null) {
+            return;
+        }
+
+        try {
+            String bakiye = "0.00";
+            if (musteri.getVadesiz().getBakiye() != null) {
+                bakiye = musteri.getVadesiz().getBakiye().toString();
+            }
+            String no = musteri.getVadesiz().getHesapNo();
+            
+            if (lblVadesizBilgi != null) {
+                lblVadesizBilgi.setText("Hesap: " + no + "  |  Bakiye: " + bakiye + " TL");
+            }
+        } catch (Exception e) {
+            // Hata olursa program çökmesin
         }
     }
 
-    /* ===================== SOL MENÜ ===================== */
-
-    private JPanel solMenu() {
-        JPanel panel = new JPanel(new GridLayout(6, 1, 6, 6));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        panel.setBackground(new Color(200, 235, 210));
-
-        JButton btnTransfer = menuButon("Transfer (Hesaplarım)");
-        JButton btnDiger = menuButon("Transfer (Başka Kişi)");
-        JButton btnAltin = menuButon("Altın Al");
-        JButton btnGecmis = menuButon("İşlem Geçmişi");
-
-        btnTransfer.addActionListener(e -> panelGoster("TRANSFER"));
-        btnDiger.addActionListener(e -> panelGoster("DIGER"));
-        btnAltin.addActionListener(e -> panelGoster("ALTIN"));
-        btnGecmis.addActionListener(e -> panelGoster("GECMIS"));
-
-        panel.add(btnTransfer);
-        panel.add(btnDiger);
-        panel.add(btnAltin);
-        panel.add(btnGecmis);
-
-        return panel;
-    }
-
-    private JButton menuButon(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Arial", Font.PLAIN, 12));
+    private JButton ortaBoyButonYap(String yazi) {
+        JButton btn = new JButton(yazi);
+        btn.setFont(new Font("Arial", Font.BOLD, 14));
+        btn.setPreferredSize(new Dimension(220, 50));
         btn.setFocusPainted(false);
+        btn.setBackground(Color.WHITE);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 2));
         return btn;
-    }
-
-    /* ===================== İÇERİK PANELİ ===================== */
-
-    private JPanel icerikPaneli() {
-        contentPanel.add(bosPanel("Bir işlem seçiniz"), "BOS");
-        contentPanel.add(transferPanel(), "TRANSFER");
-        contentPanel.add(digerTransferPanel(), "DIGER");
-        contentPanel.add(altinPanel(), "ALTIN");
-        contentPanel.add(gecmisPanel(), "GECMIS");
-
-        panelGoster("BOS");
-        return contentPanel;
-    }
-
-    private void panelGoster(String name) {
-        ((CardLayout) contentPanel.getLayout()).show(contentPanel, name);
-    }
-
-    /* ===================== PANELLER ===================== */
-
-    private JPanel transferPanel() {
-        JPanel panel = formPanel("Hesaplarım Arası Transfer");
-
-        JComboBox<String> cmbAlici = new JComboBox<>(new String[]{
-                "Tasarruf Hesabı", "Vadesiz Hesap"
-        });
-        JTextField txtTutar = new JTextField(10);
-
-        JButton btn = new JButton("Transfer Yap");
-        btn.addActionListener(e -> {
-            try {
-                BigDecimal tutar = new BigDecimal(txtTutar.getText());
-                boolean vadesizdenTasarrufa =
-                        cmbAlici.getSelectedItem().toString().contains("Tasarruf");
-
-                banka.kendiHesaplarimArasiTransfer(musteri, vadesizdenTasarrufa, tutar);
-                guncelleUstBilgi();
-                JOptionPane.showMessageDialog(this, "Transfer başarılı");
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Hata", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        panel.add(new JLabel("Alıcı Hesap:"));
-        panel.add(cmbAlici);
-        panel.add(new JLabel("Tutar (TL):"));
-        panel.add(txtTutar);
-        panel.add(new JLabel());
-        panel.add(btn);
-
-        return panel;
-    }
-
-    private JPanel digerTransferPanel() {
-        JPanel panel = formPanel("Başka Kişiye Transfer");
-
-        JTextField txtHesapNo = new JTextField(12);
-        JTextField txtAd = new JTextField(12);
-        JTextField txtTutar = new JTextField(10);
-
-        JButton btn = new JButton("Transfer Yap");
-        btn.addActionListener(e -> {
-            try {
-                BigDecimal tutar = new BigDecimal(txtTutar.getText());
-
-                banka.transferYap(
-                        musteri,
-                        txtHesapNo.getText(),
-                        txtAd.getText(),
-                        tutar
-                );
-                guncelleUstBilgi();
-                JOptionPane.showMessageDialog(this, "Transfer başarılı");
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Hata", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        panel.add(new JLabel("Alıcı Hesap No:"));
-        panel.add(txtHesapNo);
-        panel.add(new JLabel("Ad Soyad:"));
-        panel.add(txtAd);
-        panel.add(new JLabel("Tutar (TL):"));
-        panel.add(txtTutar);
-        panel.add(new JLabel());
-        panel.add(btn);
-
-        return panel;
-    }
-
-    // --- HATALI OLAN ALTIN PANELİ BURADAYDI, DÜZELTİLDİ ---
-    private JPanel altinPanel() {
-        JPanel panel = formPanel("Altın Alım");
-
-        JTextField txtTl = new JTextField(10);
-        JTextField txtGram = new JTextField(10);
-
-        JButton btn = new JButton("Altın Al");
-        btn.addActionListener(e -> {
-            try {
-                // Notu sildim, Banka sınıfındaki metoda uygun parametreleri gönderiyoruz.
-                banka.altinAl(
-                        musteri,
-                        new BigDecimal(txtTl.getText()),   // TL Tutarı
-                        new BigDecimal(txtGram.getText())  // Altın Gram Fiyatı
-                );
-                
-                guncelleUstBilgi();
-                JOptionPane.showMessageDialog(this, "Altın alımı başarılı");
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Hata", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        panel.add(new JLabel("TL Tutarı:"));
-        panel.add(txtTl);
-        panel.add(new JLabel("Gram Fiyatı (TL):"));
-        panel.add(txtGram);
-        panel.add(new JLabel());
-        panel.add(btn);
-
-        return panel;
-    }
-
-    private JPanel gecmisPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        JTextArea area = new JTextArea("İşlem geçmişi burada listelenecek...");
-        // İleride buraya: area.setText(musteri.getVadesiz().getIslemGecmisi().toString()); eklenebilir.
-        area.setEditable(false);
-
-        panel.add(new JScrollPane(area), BorderLayout.CENTER);
-        return panel;
-    }
-
-    private JPanel bosPanel(String text) {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.add(new JLabel(text));
-        return panel;
-    }
-
-    private JPanel formPanel(String title) {
-        JPanel panel = new JPanel(new GridLayout(0, 2, 6, 6));
-        panel.setBorder(BorderFactory.createTitledBorder(title));
-        return panel;
     }
 }

@@ -24,7 +24,6 @@ public abstract class Hesap {
     protected void bakiyeAzalt(BigDecimal tutar) {
         bakiye = bakiye.subtract(tutar);
     }
-
     protected void bakiyeKontrol(BigDecimal tutar) {
         if (bakiye.compareTo(tutar) < 0) {
             throw new IllegalArgumentException("Yetersiz bakiye.");

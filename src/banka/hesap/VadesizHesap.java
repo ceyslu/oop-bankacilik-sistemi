@@ -70,4 +70,8 @@ public class VadesizHesap extends Hesap {
         // Sadece bilgi logu atabiliriz
         gecmis.ekle(new BilgiIslemi(getHesapNo(), "Ay Sonu Özeti: " + getBakiye() + " TL"));
     }
+
+    public Object getIslemGecmisi() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }
