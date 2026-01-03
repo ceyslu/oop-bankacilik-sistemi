@@ -8,11 +8,13 @@ import java.text.ParseException;
 import javax.swing.*;
 import javax.swing.text.MaskFormatter;
 
+// HATA BURADAYDI: Üstte fazladan açılan class tanımı silindi.
 public class LoginFrame extends JFrame {
 
-    private final Banka banka = new Banka();
+    private final Banka banka;
 
-    public LoginFrame() {
+    public LoginFrame(Banka banka) {
+        this.banka = banka;
         setTitle("Bankacilik Sistemi - Giris");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(560, 420);
@@ -144,11 +146,6 @@ public class LoginFrame extends JFrame {
                 mesajLabel.setForeground(new Color(0, 140, 0));
                 mesajLabel.setText("Kayit basarili! Giris Yap sekmesinden giris yapabilirsin.");
 
-                // istersen formu temizle:
-                // tcField.setValue(null);
-                // adSoyadField.setText("");
-                // sifreField.setText("");
-
             } catch (Exception ex) {
                 mesajLabel.setText(ex.getMessage());
             }
@@ -174,5 +171,9 @@ public class LoginFrame extends JFrame {
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public Banka getBanka() {
+        return banka;
     }
 }

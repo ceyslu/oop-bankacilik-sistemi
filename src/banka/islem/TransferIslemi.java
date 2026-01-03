@@ -1,22 +1,24 @@
 package banka.islem;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public class TransferIslemi extends Islem {
-    private final String gonderen;
-    private final String alan;
-    private final BigDecimal tutar;
 
-    public TransferIslemi(String gonderen, String alan, BigDecimal tutar) {
-        super("Transfer");
-        this.gonderen = gonderen;
-        this.alan = alan;
-        this.tutar = tutar;
+    private final String aliciHesapNo;
+
+    public TransferIslemi(String gonderenHesapNo, String aliciHesapNo, BigDecimal tutar) {
+        super(gonderenHesapNo, tutar, "TRANSFER", LocalDateTime.now());
+        this.aliciHesapNo = aliciHesapNo;
     }
 
-    @Override
+    public String getAliciHesapNo() {
+        return aliciHesapNo;
+    }
+
     public String ozet() {
-        return getZaman() + " | " + gonderen + " -> " + alan + " | " + tutar + " TL";
+        return "[" + getTarih() + "] TRANSFER | "
+                + getHesapNo() + " -> " + aliciHesapNo
+                + " | Tutar: " + getTutar() + " TL";
     }
 }
-

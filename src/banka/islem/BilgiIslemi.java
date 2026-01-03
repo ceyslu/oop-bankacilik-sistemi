@@ -1,18 +1,22 @@
 package banka.islem;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 public class BilgiIslemi extends Islem {
-    private final String hesapNo;
     private final String mesaj;
 
     public BilgiIslemi(String hesapNo, String mesaj) {
-        super("Bilgi");
-        this.hesapNo = hesapNo;
+        super(hesapNo, BigDecimal.ZERO, "BILGI", LocalDateTime.now());
         this.mesaj = mesaj;
+    }
+
+    public String getMesaj() {
+        return mesaj;
     }
 
     @Override
     public String ozet() {
-        return getZaman() + " | " + hesapNo + " | " + mesaj;
+        return "[" + getTarih() + "] " + getIslemTuru() + " | " + mesaj;
     }
 }
-

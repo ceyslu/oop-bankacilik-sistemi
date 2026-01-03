@@ -1,5 +1,6 @@
 package banka;
 
+import banka.service.Banka;
 import banka.ui.LoginFrame;
 import javax.swing.SwingUtilities;
 
@@ -7,7 +8,8 @@ public class App {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new LoginFrame().setVisible(true);
+            Banka banka = new Banka();
+            new LoginFrame(banka).setVisible(true);
         });
     }
 }

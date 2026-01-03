@@ -2,264 +2,224 @@ package banka.service;
 
 import banka.hesap.TasarrufHesabi;
 import banka.hesap.VadesizHesap;
-import banka.islem.BilgiIslemi;
+import banka.islem.BilgiIslemi; // Loglama için
+import banka.islem.IslemGecmisi;
 import banka.model.Musteri;
-import banka.util.MetinUtil;
-import banka.util.Sifreleme;
-
 import java.io.*;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Banka {
 
-    private static final String DOSYA = "data/musteriler.csv";
+    private final Map<String, Musteri> musteriler = new HashMap<>();
+    private final IslemGecmisi islemGecmisi = new IslemGecmisi();
 
-    private final Map<String, Musteri> tcIle = new HashMap<>();
-    private final Map<String, Musteri> adSoyadIle = new HashMap<>();
-    private final Map<String, Musteri> hesapNoIle = new HashMap<>();
-
-    private int vadesizNo = 100000;
-    private int tasarrufNo = 200000;
+    private static final String DOSYA_YOLU = "data/musteriler.csv";
 
     public Banka() {
         dosyadanYukle();
     }
 
-    // ===========================
-    // ÜYE OL / GİRİŞ
-    // ===========================
-
-    public Musteri uyeOl(String tc, String adSoyad, String sifre) {
-        tc = MetinUtil.sadeceRakam(tc);
-        adSoyad = MetinUtil.titleCase(adSoyad);
-
-        if (tc.length() != 11)
-            throw new IllegalArgumentException("TC 11 haneli olmali.");
-        if (adSoyad.isBlank() || adSoyad.split(" ").length < 2)
-            throw new IllegalArgumentException("Ad Soyad en az 2 kelime olmali.");
-        MetinUtil.minUzunluk(sifre, 6, "Sifre");
-
-        if (tcIle.containsKey(tc))
-            throw new IllegalArgumentException("Bu TC zaten kayitli.");
-        if (adSoyadIle.containsKey(adSoyad))
-            throw new IllegalArgumentException("Bu Ad Soyad zaten kayitli.");
-
-        VadesizHesap v = new VadesizHesap(String.valueOf(++vadesizNo));
-        TasarrufHesabi t = new TasarrufHesabi(String.valueOf(++tasarrufNo));
-
-        // Yeni üye bonusu: vadesize 1000 TL
-        v.paraYatir(new BigDecimal("1000"));
-
-        String sifreHash = Sifreleme.sha256(sifre);
-
-        Musteri m = new Musteri(tc, adSoyad, sifreHash, v, t);
-
-        tcIle.put(tc, m);
-        adSoyadIle.put(adSoyad, m);
-        hesapNoIle.put(v.getHesapNo(), m);
-        hesapNoIle.put(t.getHesapNo(), m);
-
-        dosyayaKaydet();
-        return m;
+    public Map<String, Musteri> getMusteriler() {
+        return musteriler;
     }
 
-    public Musteri girisYap(String adSoyad, String sifre) {
-        adSoyad = MetinUtil.titleCase(adSoyad);
-        MetinUtil.minUzunluk(sifre, 6, "Sifre");
-
-        Musteri m = adSoyadIle.get(adSoyad);
-        if (m == null)
-            throw new IllegalArgumentException("Kullanici bulunamadi.");
-
-        String hash = Sifreleme.sha256(sifre);
-        if (!m.sifreDogruMu(hash))
-            throw new IllegalArgumentException("Sifre hatali.");
-
-        return m;
+    public IslemGecmisi getIslemGecmisi() {
+        return islemGecmisi;
     }
 
-    // ===========================
-    // DIŞ TRANSFER (SADECE VADESİZ)
-    // ücret/komisyonu sonra ekleyeceğiz
-    // ===========================
+    /* ===================== GIRIS / UYELIK ===================== */
 
-    public void transferYap(Musteri gonderen, String aliciHesapNo, String aliciAdSoyad, BigDecimal tutar) {
-        aliciHesapNo = temizle(aliciHesapNo);
-        aliciAdSoyad = MetinUtil.titleCase(aliciAdSoyad);
-
-        if (aliciHesapNo.isEmpty() || aliciAdSoyad.isEmpty())
-            throw new IllegalArgumentException("Alici hesap no ve ad soyad bos olamaz.");
-        if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0)
-            throw new IllegalArgumentException("Tutar pozitif olmali.");
-
-        Musteri alan = hesapNoIle.get(aliciHesapNo);
-        if (alan == null)
-            throw new IllegalArgumentException("Alici hesap bulunamadi.");
-
-        if (!alan.getAdSoyad().equals(aliciAdSoyad))
-            throw new IllegalArgumentException("Alici ad soyad eslesmiyor.");
-
-        // Transfer sadece alıcının Vadesiz hesabına
-        if (!alan.getVadesiz().getHesapNo().equals(aliciHesapNo))
-            throw new IllegalArgumentException("Transfer sadece Vadesiz hesaplara yapilabilir.");
-
-        // gonderen vadesiz -> alan vadesiz
-        gonderen.getVadesiz().transferEt(alan.getVadesiz(), tutar, gonderen.getVadesizGecmis());
-
-        // alıcıya "gelen" kayıt
-        alan.getVadesizGecmis().ekle(new BilgiIslemi(
-                alan.getVadesiz().getHesapNo(),
-                "TRANSFER GELDI: " + gonderen.getAdSoyad() + " (" + gonderen.getVadesiz().getHesapNo() + ") -> " +
-                        alan.getVadesiz().getHesapNo() + " | " + tutar + " TL"));
-
-        dosyayaKaydet();
-    }
-
-    // ===========================
-    // ALTIN AL (Tasarruf hesabı içinden çağırıyoruz)
-    // ===========================
-
-    public void altinAl(Musteri musteri, BigDecimal tlTutar, BigDecimal gramFiyat) {
-        // TasarrufHesabi zaten her şeyi yapıyor:
-        // - TL düşüyor
-        // - altın gram artıyor
-        // - AltinAlimIslemi geçmişe ekleniyor
-        musteri.getTasarruf().altinAl(tlTutar, gramFiyat, musteri.getTasarrufGecmis());
-        dosyayaKaydet();
-    }
-
-    // ===========================
-    // KENDİ HESAPLARIM ARASI TRANSFER (ÜCRETSİZ)
-    // (şimdilik basit)
-    // ===========================
-    public void kendiHesaplarimArasiTransfer(Musteri m, boolean vadesizdenTasarrufa, BigDecimal tutar) {
-        if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0)
-            throw new IllegalArgumentException("Tutar pozitif olmali.");
-
-        if (vadesizdenTasarrufa) {
-            m.getVadesiz().transferEt(m.getTasarruf(), tutar, m.getVadesizGecmis());
-            m.getTasarrufGecmis().ekle(new BilgiIslemi(
-                    m.getTasarruf().getHesapNo(),
-                    "TRANSFER GELDI (Kendi): " + m.getVadesiz().getHesapNo() + " -> " +
-                            m.getTasarruf().getHesapNo() + " | " + tutar + " TL"));
-        } else {
-            // Tasarruf -> Vadesiz (Tasarruf paraCek imzası: (tutar, gecmis))
-            m.getTasarruf().paraCek(tutar, m.getTasarrufGecmis());
-            m.getVadesiz().paraYatir(tutar);
-
-            m.getVadesizGecmis().ekle(new BilgiIslemi(
-                    m.getVadesiz().getHesapNo(),
-                    "TRANSFER GELDI (Kendi): " + m.getTasarruf().getHesapNo() + " -> " +
-                            m.getVadesiz().getHesapNo() + " | " + tutar + " TL"));
+    public Musteri girisYap(String adSoyad, String sifreHash) {
+        if (adSoyad == null || adSoyad.isBlank()) {
+            throw new IllegalArgumentException("Ad Soyad boş olamaz.");
+        }
+        if (sifreHash == null || sifreHash.isBlank()) {
+            throw new IllegalArgumentException("Şifre boş olamaz.");
         }
 
-        dosyayaKaydet();
+        String hedef = adSoyad.trim().toLowerCase();
+
+        for (Musteri m : musteriler.values()) {
+            String mevcut = m.getAdSoyad().trim().toLowerCase();
+            if (mevcut.equals(hedef)) {
+                if (!m.sifreDogruMu(sifreHash)) {
+                    throw new IllegalArgumentException("Şifre hatalı.");
+                }
+                return m;
+            }
+        }
+        throw new IllegalArgumentException("Kullanıcı bulunamadı.");
     }
 
-    // ===========================
-    // DOSYA
-    // Format:
-    // tc;adSoyad;sifreHash;vNo;vBakiye;tNo;tBakiye;altinGram
-    // ===========================
+    public Musteri uyeOl(String tc, String adSoyad, String sifreHash) {
+        if (tc == null || tc.isBlank()) throw new IllegalArgumentException("TC boş olamaz.");
+        if (adSoyad == null || adSoyad.isBlank()) throw new IllegalArgumentException("Ad Soyad boş olamaz.");
+        if (sifreHash == null || sifreHash.isBlank()) throw new IllegalArgumentException("Şifre boş olamaz.");
+
+        if (musteriler.containsKey(tc)) {
+            throw new IllegalArgumentException("Bu TC ile kayıt zaten var.");
+        }
+
+        String hedef = adSoyad.trim().toLowerCase();
+        for (Musteri x : musteriler.values()) {
+            if (x.getAdSoyad().trim().toLowerCase().equals(hedef)) {
+                throw new IllegalArgumentException("Bu ad soyad ile kayıt zaten var.");
+            }
+        }
+
+        int sira = musteriler.size() + 1;
+        String vNo = "100" + String.format("%03d", sira);
+        String tNo = "200" + String.format("%03d", sira);
+
+        VadesizHesap vadesiz = new VadesizHesap(vNo);
+        TasarrufHesabi tasarruf = new TasarrufHesabi(tNo);
+
+        // Yeni üye bonusu: tasarrufa 1000 TL
+        tasarruf.paraYatir(new BigDecimal("1000"));
+
+        Musteri yeni = new Musteri(tc, adSoyad, sifreHash, vadesiz, tasarruf);
+        musteriler.put(tc, yeni);
+        dosyayaKaydet();
+
+        return yeni;
+    }
+
+    /* ===================== DOSYA ===================== */
 
     private void dosyadanYukle() {
-        File f = new File(DOSYA);
-        if (!f.exists())
-            return;
+        File f = new File(DOSYA_YOLU);
+        if (!f.exists()) return;
 
-        try (BufferedReader br = new BufferedReader(
-                new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(f))) {
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
-                if (line.isEmpty())
-                    continue;
+                if (line.isEmpty()) continue;
 
                 String[] p = line.split(";");
-                if (p.length != 8)
-                    continue;
+                if (p.length < 7) continue;
 
                 String tc = p[0];
                 String adSoyad = p[1];
                 String sifreHash = p[2];
 
                 String vNo = p[3];
-                BigDecimal vBakiye = new BigDecimal(p[4]);
+                BigDecimal vB = new BigDecimal(p[4]);
 
                 String tNo = p[5];
-                BigDecimal tBakiye = new BigDecimal(p[6]);
+                BigDecimal tB = new BigDecimal(p[6]);
 
-                BigDecimal altinGram = new BigDecimal(p[7]);
+                BigDecimal gram = BigDecimal.ZERO;
+                if (p.length >= 8) gram = new BigDecimal(p[7]);
 
-                VadesizHesap v = new VadesizHesap(vNo);
-                TasarrufHesabi t = new TasarrufHesabi(tNo);
+                VadesizHesap vadesiz = new VadesizHesap(vNo);
+                vadesiz.paraYatir(vB);
 
-                if (vBakiye.compareTo(BigDecimal.ZERO) > 0)
-                    v.paraYatir(vBakiye);
-                if (tBakiye.compareTo(BigDecimal.ZERO) > 0)
-                    t.paraYatir(tBakiye);
+                TasarrufHesabi tasarruf = new TasarrufHesabi(tNo);
+                tasarruf.paraYatir(tB);
+                tasarruf.altinGramAyarla(gram);
 
-                // TasarrufHesabi içinde setter var: altinGramAyarla(...)
-                if (altinGram.compareTo(BigDecimal.ZERO) > 0) {
-                    t.altinGramAyarla(altinGram);
-                }
-
-                Musteri m = new Musteri(tc, adSoyad, sifreHash, v, t);
-
-                tcIle.put(tc, m);
-                adSoyadIle.put(adSoyad, m);
-                hesapNoIle.put(v.getHesapNo(), m);
-                hesapNoIle.put(t.getHesapNo(), m);
-
-                vadesizNo = Math.max(vadesizNo, sayiyaCevir(vNo, 100000));
-                tasarrufNo = Math.max(tasarrufNo, sayiyaCevir(tNo, 200000));
+                Musteri m = new Musteri(tc, adSoyad, sifreHash, vadesiz, tasarruf);
+                musteriler.put(tc, m);
             }
         } catch (Exception e) {
-            System.out.println("Dosyadan yukleme hatasi: " + e.getMessage());
+            throw new RuntimeException("Dosyadan yükleme hatası: " + e.getMessage(), e);
         }
     }
 
     private void dosyayaKaydet() {
-        File f = new File(DOSYA);
-        if (f.getParentFile() != null)
-            f.getParentFile().mkdirs();
+        File f = new File(DOSYA_YOLU);
+        File parent = f.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
 
-        try (BufferedWriter bw = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(f, false), StandardCharsets.UTF_8))) {
-            for (Musteri m : tcIle.values()) {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(f))) {
+            for (Musteri m : musteriler.values()) {
+                VadesizHesap v = m.getVadesiz();
+                TasarrufHesabi t = m.getTasarruf();
 
-                BigDecimal altinGram = m.getTasarruf().getAltinGram();
-
-                String line = String.join(";",
-                        m.getTc(),
-                        m.getAdSoyad(),
-                        m.getSifreHash(),
-                        m.getVadesiz().getHesapNo(),
-                        m.getVadesiz().getBakiye().toPlainString(),
-                        m.getTasarruf().getHesapNo(),
-                        m.getTasarruf().getBakiye().toPlainString(),
-                        altinGram.toPlainString());
-
-                bw.write(line);
-                bw.newLine();
+                pw.println(
+                        m.getTc() + ";" +
+                                m.getAdSoyad() + ";" +
+                                m.getSifreHash() + ";" +
+                                v.getHesapNo() + ";" +
+                                v.getBakiye() + ";" +
+                                t.getHesapNo() + ";" +
+                                t.getBakiye() + ";" +
+                                t.getAltinGram()
+                );
             }
         } catch (Exception e) {
-            System.out.println("Dosyaya kaydetme hatasi: " + e.getMessage());
+            throw new RuntimeException("Dosyaya kaydetme hatası: " + e.getMessage(), e);
         }
     }
 
-    private int sayiyaCevir(String s, int def) {
-        try {
-            return Integer.parseInt(s);
-        } catch (Exception e) {
-            return def;
+    /* ===================== ISLEM MANTIKLARI (DÜZELTİLDİ) ===================== */
+
+    // 1. Kendi Hesapları Arası Transfer
+    public void kendiHesaplarimArasiTransfer(Musteri musteri, boolean vadesizdenTasarrufa, BigDecimal tutar) {
+        if (vadesizdenTasarrufa) {
+            // Vadesiz -> Tasarruf
+            musteri.getVadesiz().paraCek(tutar, islemGecmisi);
+            musteri.getTasarruf().paraYatir(tutar);
+            
+            islemGecmisi.ekle(new BilgiIslemi(musteri.getAdSoyad(), "Virman: Vadesiz -> Tasarruf (" + tutar + " TL)"));
+        } else {
+            // Tasarruf -> Vadesiz
+            musteri.getTasarruf().paraCek(tutar, islemGecmisi);
+            musteri.getVadesiz().paraYatir(tutar);
+            
+            islemGecmisi.ekle(new BilgiIslemi(musteri.getAdSoyad(), "Virman: Tasarruf -> Vadesiz (" + tutar + " TL)"));
         }
+        // İşlem bitince kaydet
+        dosyayaKaydet();
     }
 
-    private String temizle(String s) {
-        return s == null ? "" : s.trim();
+    // 2. Başkasına Transfer (Vadesizden gider)
+    public void transferYap(Musteri gonderen, String aliciHesapNo, String aliciAdSoyad, BigDecimal tutar) {
+        // Alıcıyı bul (Hesap nosuna göre tüm müşterileri gez)
+        Musteri alici = null;
+        for (Musteri m : musteriler.values()) {
+            if (m.getVadesiz().getHesapNo().equals(aliciHesapNo)) {
+                alici = m;
+                break;
+            }
+        }
+
+        if (alici == null) {
+            throw new IllegalArgumentException("Alıcı hesap numarası bulunamadı.");
+        }
+
+        // İsim kontrolü (Güvenlik)
+        if (!alici.getAdSoyad().equalsIgnoreCase(aliciAdSoyad)) {
+            throw new IllegalArgumentException("Alıcı Ad Soyad bilgisi uyuşmuyor.");
+        }
+
+        if (gonderen.getTc().equals(alici.getTc())) {
+            throw new IllegalArgumentException("Kendinize bu menüden transfer yapamazsınız.");
+        }
+
+        // Transfer işlemi
+        gonderen.getVadesiz().paraCek(tutar, islemGecmisi); // Gönderenden düş
+        alici.getVadesiz().paraYatir(tutar);                // Alıcıya ekle
+
+        // Log ekle
+        islemGecmisi.ekle(new BilgiIslemi(gonderen.getAdSoyad(), 
+            "EFT Giden: " + alici.getAdSoyad() + " (" + tutar + " TL)"));
+
+        dosyayaKaydet();
+    }
+
+    // 3. Altın Al (Vadesizden TL düşer, Tasarrufa Altın ekler)
+    public void altinAl(Musteri musteri, BigDecimal tlTutar, BigDecimal gramFiyat) {
+        // 1. Vadesizden TL çek
+        musteri.getVadesiz().paraCek(tlTutar, islemGecmisi);
+
+        // 2. Tasarruf hesabına Altın al komutunu gönder
+        // (TasarrufHesabi sınıfında yazdığımız 'altinAl' metodu çalışacak)
+        musteri.getTasarruf().altinAl(tlTutar, gramFiyat, islemGecmisi);
+
+        dosyayaKaydet();
     }
 }

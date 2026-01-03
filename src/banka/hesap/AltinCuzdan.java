@@ -10,17 +10,19 @@ public class AltinCuzdan {
         return gram;
     }
 
+    // Altin alimi sirasinda kullanilir
     public void gramEkle(BigDecimal eklenecek) {
-        if (eklenecek == null || eklenecek.compareTo(BigDecimal.ZERO) <= 0)
-            throw new IllegalArgumentException("Gram pozitif olmali");
-
+        if (eklenecek == null || eklenecek.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Eklenecek gram pozitif olmali.");
+        }
         gram = gram.add(eklenecek);
     }
 
+    // SADECE dosyadan yukleme icin
     public void gramAyarla(BigDecimal yeniGram) {
-        if (yeniGram == null || yeniGram.compareTo(BigDecimal.ZERO) < 0)
-            throw new IllegalArgumentException("Gram negatif olamaz");
-
-        gram = yeniGram;
+        if (yeniGram == null || yeniGram.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Gram negatif olamaz.");
+        }
+        this.gram = yeniGram;
     }
 }

@@ -2,10 +2,9 @@ package banka.ui;
 
 import banka.model.Musteri;
 import banka.service.Banka;
-
-import javax.swing.*;
 import java.awt.*;
 import java.math.BigDecimal;
+import javax.swing.*;
 
 public class MainFrame extends JFrame {
 
@@ -45,7 +44,7 @@ public class MainFrame extends JFrame {
         JButton btnGeri = new JButton("< Geri");
         btnGeri.setFocusPainted(false);
         btnGeri.addActionListener(e -> {
-            dispose();
+            dispose();     
             new LoginFrame(banka).setVisible(true);
         });
 
@@ -55,10 +54,13 @@ public class MainFrame extends JFrame {
     }
 
     private void guncelleUstBilgi() {
-        lblBilgi.setText(
-                "Vadesiz: " + musteri.getVadesiz().getHesapNo() +
-                        " | Bakiye: " + musteri.getVadesiz().getBakiye() + " TL"
-        );
+        // Null kontrolü ekleyelim ki hata vermesin
+        if (musteri != null && musteri.getVadesiz() != null) {
+            lblBilgi.setText(
+                    "Vadesiz: " + musteri.getVadesiz().getHesapNo() +
+                            " | Bakiye: " + musteri.getVadesiz().getBakiye() + " TL"
+            );
+        }
     }
 
     /* ===================== SOL MENÜ ===================== */
@@ -182,6 +184,7 @@ public class MainFrame extends JFrame {
         return panel;
     }
 
+    // --- HATALI OLAN ALTIN PANELİ BURADAYDI, DÜZELTİLDİ ---
     private JPanel altinPanel() {
         JPanel panel = formPanel("Altın Alım");
 
@@ -191,11 +194,13 @@ public class MainFrame extends JFrame {
         JButton btn = new JButton("Altın Al");
         btn.addActionListener(e -> {
             try {
+                // Notu sildim, Banka sınıfındaki metoda uygun parametreleri gönderiyoruz.
                 banka.altinAl(
                         musteri,
-                        new BigDecimal(txtTl.getText()),
-                        new BigDecimal(txtGram.getText())
+                        new BigDecimal(txtTl.getText()),   // TL Tutarı
+                        new BigDecimal(txtGram.getText())  // Altın Gram Fiyatı
                 );
+                
                 guncelleUstBilgi();
                 JOptionPane.showMessageDialog(this, "Altın alımı başarılı");
             } catch (Exception ex) {
@@ -218,6 +223,7 @@ public class MainFrame extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JTextArea area = new JTextArea("İşlem geçmişi burada listelenecek...");
+        // İleride buraya: area.setText(musteri.getVadesiz().getIslemGecmisi().toString()); eklenebilir.
         area.setEditable(false);
 
         panel.add(new JScrollPane(area), BorderLayout.CENTER);

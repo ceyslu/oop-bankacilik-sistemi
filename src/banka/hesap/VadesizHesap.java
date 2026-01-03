@@ -1,8 +1,9 @@
 package banka.hesap;
 
-import java.math.BigDecimal;
-
+import banka.islem.BilgiIslemi;
 import banka.islem.IslemGecmisi;
+import banka.islem.TransferIslemi;
+import java.math.BigDecimal;
 
 public class VadesizHesap extends Hesap {
 
@@ -10,27 +11,63 @@ public class VadesizHesap extends Hesap {
         super(hesapNo);
     }
 
-    /*
-     * Vadesiz hesapta:
-     * - Para yatirma YOK
-     * - Para cekme YOK
-     * Tum islemler transfer uzerinden Banka sinifi ile yapilir
-     */
-public void transferEt(Hesap alici, BigDecimal tutar, banka.islem.IslemGecmisi gecmis) {
-    if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0)
-        throw new IllegalArgumentException("Tutar pozitif olmali");
+    /* ===================== PARA ÇEKME (Zorunlu) ===================== */
+    // Banka sınıfı transfer yaparken veya altın alırken bu metodu kullanır.
+    
+    
+    public void paraCek(BigDecimal tutar, IslemGecmisi gecmis) {
+        // 1. Tutar Kontrolü
+        if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Tutar pozitif olmalı.");
+        }
 
-    bakiyeKontrol(tutar);
-    bakiyeAzalt(tutar);
-    alici.bakiyeArtir(tutar);
+        // 2. Bakiye Kontrolü
+        if (getBakiye().compareTo(tutar) < 0) {
+            throw new IllegalArgumentException("Yetersiz Bakiye (Vadesiz)!");
+        }
 
-    // burada TransferIslemi ekle (varsa)
-    gecmis.ekle(new banka.islem.BilgiIslemi(getHesapNo(),
-            "TRANSFER: " + getHesapNo() + " -> " + alici.getHesapNo() + " | " + tutar + " TL"));
-}
+        // 3. Parayı Düş
+        bakiyeAzalt(tutar);
+
+        // 4. Geçmişe İşle
+        if (gecmis != null) {
+            gecmis.ekle(new BilgiIslemi(
+                getHesapNo(), 
+                "Hesaptan Çıkış: " + tutar + " TL"
+            ));
+        }
+    }
+
+    /* ===================== TRANSFER (Opsiyonel) ===================== */
+    // Eğer sadece VadesizHesap üzerinden transfer çağrılırsa diye bırakıyoruz.
+    // Ancak Banka sınıfı genellikle manuel yapıyor.
+    public void transferEt(Hesap alici, BigDecimal tutar, IslemGecmisi gecmis) {
+        if (alici == null) {
+            throw new IllegalArgumentException("Alıcı hesap boş olamaz.");
+        }
+        
+        // Kendi paraCek metodumuzu kullanarak bakiyeyi düşüyoruz
+        paraCek(tutar, gecmis);
+
+        // Alıcıya ekle
+        alici.paraYatir(tutar);
+
+        // Özel transfer logu
+        gecmis.ekle(
+                new TransferIslemi(
+                        getHesapNo(),
+                        alici.getHesapNo(),
+                        tutar
+                )
+        );
+    }
+
+    /* ===================== AY SONU ===================== */
 
     @Override
     public void aySonuIslemleri(IslemGecmisi gecmis) {
-        // Vadesiz hesapta ay sonu ozel islem yok
+        // Vadesiz hesapta ay sonu için ekstra bir işlem yok (faiz vb.)
+        // Sadece bilgi logu atabiliriz
+        gecmis.ekle(new BilgiIslemi(getHesapNo(), "Ay Sonu Özeti: " + getBakiye() + " TL"));
     }
 }
