@@ -2,6 +2,7 @@ package banka.hesap;
 
 import banka.islem.BilgiIslemi;
 import banka.islem.IslemGecmisi;
+import banka.islem.TransferIslemi;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,89 +11,116 @@ import java.util.Map;
 
 public class VadesizHesap extends Hesap {
 
+    // --- YENİ EKLENENLER: Fatura Listesi ve Kişisel Geçmiş ---
     private Map<String, BigDecimal> faturalar = new HashMap<>();
     private List<String> kisiselGecmis = new ArrayList<>();
 
     public VadesizHesap(String hesapNo) {
         super(hesapNo);
-        gecmisEkle("[SİSTEM] HESAP AÇILIŞI");
+        // Hesap açıldığı anı not alalım
+        gecmisEkle("Hesap Oluşturuldu.");
     }
 
-    /* ===================== FATURA ===================== */
+    /* ===================== YENİ: FATURA SİSTEMİ ===================== */
     
     public void faturaKaydet(String faturaTuru, BigDecimal miktar) {
-        if (miktar.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalArgumentException("Tutar pozitif olmalı.");
+        if (miktar.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Tutar pozitif olmalı.");
+        }
         faturalar.put(faturaTuru, miktar);
-        gecmisEkle("[FATURA] KAYIT: " + faturaTuru.toUpperCase() + " | " + miktar + " TL");
+        gecmisEkle("[FATURA KAYIT] " + faturaTuru + ": " + miktar + " TL");
     }
 
     public void faturaOde(String faturaTuru) {
-        if (!faturalar.containsKey(faturaTuru)) throw new IllegalArgumentException("Fatura bulunamadı.");
+        if (!faturalar.containsKey(faturaTuru)) {
+            throw new IllegalArgumentException("Kayıtlı fatura bulunamadı.");
+        }
         BigDecimal tutar = faturalar.get(faturaTuru);
         
-        paraCek(tutar, null); // Parayı düş
-        faturalar.remove(faturaTuru);
+        // Ödeme yap (kendi paraCek metodumuzu kullanıyoruz)
+        paraCek(tutar, null); 
         
-        // Son eklenen 'ÇEKİM' mesajını silip yerine daha detaylısını yazalım ki çift olmasın
-        kisiselGecmis.remove(kisiselGecmis.size() - 1); 
-        gecmisEkle("[FATURA] ÖDEME: " + faturaTuru.toUpperCase() + " | -" + tutar + " TL");
+        faturalar.remove(faturaTuru); // Listeden sil
+        gecmisEkle("[FATURA ÖDEME] " + faturaTuru + " ödendi.");
     }
 
-    public Map<String, BigDecimal> getFaturalar() { return faturalar; }
+    public Map<String, BigDecimal> getFaturalar() {
+        return faturalar;
+    }
 
-    /* ===================== PARA İŞLEMLERİ ===================== */
+    /* ===================== MEVCUT: PARA ÇEKME (GÜNCELLENDİ) ===================== */
     
-    @Override
+    
     public void paraCek(BigDecimal tutar, IslemGecmisi gecmis) {
-        if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalArgumentException("Hatalı tutar.");
-        if (getBakiye().compareTo(tutar) < 0) throw new IllegalArgumentException("Yetersiz Bakiye!");
+        // 1. Tutar Kontrolü
+        if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Tutar pozitif olmalı.");
+        }
 
+        // 2. Bakiye Kontrolü
+        if (getBakiye().compareTo(tutar) < 0) {
+            throw new IllegalArgumentException("Yetersiz Bakiye (Vadesiz)!");
+        }
+
+        // 3. Parayı Düş
         bakiyeAzalt(tutar);
 
-        // Standart Çekim Mesajı (Transferlerde bunu ezeceğiz veya detaylandıracağız)
-        gecmisEkle("[GİDER] NAKİT ÇIKIŞI | -" + tutar + " TL");
+        // 4. --- YENİ --- Kişisel Geçmişe Yaz (Geldi/Gitti şeklinde)
+        gecmisEkle("[GİDER] Hesaptan Çıkış: -" + tutar + " TL");
 
-        if (gecmis != null) gecmis.ekle(new BilgiIslemi(getHesapNo(), "Çıkış: " + tutar));
+        // 5. Global Geçmişe Yaz (Eski sistem çalışmaya devam etsin)
+        if (gecmis != null) {
+            gecmis.ekle(new BilgiIslemi(getHesapNo(), "Para Çekme: " + tutar + " TL"));
+        }
     }
 
+    /* ===================== MEVCUT: PARA YATIRMA (GÜNCELLENDİ) ===================== */
+    
     @Override
     public void paraYatir(BigDecimal tutar) {
         super.paraYatir(tutar);
-        gecmisEkle("[GELİR] NAKİT GİRİŞİ | +" + tutar + " TL");
+        // Para yatınca da geçmişe yazsın (Özellikle 1000 TL bonus için önemli)
+        gecmisEkle("[GELİR] Hesaba Giriş: +" + tutar + " TL");
     }
 
+    /* ===================== TRANSFER (AYNEN KORUNDU) ===================== */
+    
     public void transferEt(Hesap alici, BigDecimal tutar, IslemGecmisi gecmis) {
-        if (alici == null) throw new IllegalArgumentException("Alıcı yok.");
+        if (alici == null) throw new IllegalArgumentException("Alıcı hesap boş olamaz.");
+        
         paraCek(tutar, gecmis);
         alici.paraYatir(tutar);
-    }
 
-    /* ===================== GEÇMİŞ YÖNETİMİ ===================== */
-    
-    // BUNU PUBLIC YAPTIK (ÖNEMLİ): Dışarıdan özel mesaj yazılabilsin diye.
-    public void gecmisEkle(String mesaj) {
-        kisiselGecmis.add(mesaj);
-    }
+        gecmisEkle("[TRANSFER] Giden -> " + alici.getHesapNo() + ": -" + tutar + " TL");
 
-    // Son eklenen satırı silmek için (Transfer detaylarını düzeltirken lazım olacak)
-    public void sonGecmisiSil() {
-        if (!kisiselGecmis.isEmpty()) {
-            kisiselGecmis.remove(kisiselGecmis.size() - 1);
+        if (gecmis != null) {
+            gecmis.ekle(new TransferIslemi(getHesapNo(), alici.getHesapNo(), tutar));
         }
     }
 
+    /* ===================== YENİ: GEÇMİŞİ METİN OLARAK ALMA ===================== */
+    // MainFrame'de hata veren kısım burasıydı, şimdi ekliyoruz.
+    
     public String getIslemGecmisi() {
-        if (kisiselGecmis.isEmpty()) return "İşlem Yok.";
+        if (kisiselGecmis.isEmpty()) return "Henüz işlem yok.";
+        
         StringBuilder sb = new StringBuilder();
+        // En son işlem en üstte görünsün diye tersten yazdırıyoruz
         for (int i = kisiselGecmis.size() - 1; i >= 0; i--) {
             sb.append(kisiselGecmis.get(i)).append("\n");
-            sb.append("--------------------------------\n");
         }
         return sb.toString();
+    }
+    
+    // Yardımcı metot: Listeye ekleme yapar
+    private void gecmisEkle(String mesaj) {
+        kisiselGecmis.add(mesaj);
     }
 
     @Override
     public void aySonuIslemleri(IslemGecmisi gecmis) {
-        gecmisEkle("[EKSTRE] AY SONU BAKİYE: " + getBakiye() + " TL");
+        gecmisEkle("[BİLGİ] Ay Sonu Bakiyesi: " + getBakiye());
+        if(gecmis != null) 
+            gecmis.ekle(new BilgiIslemi(getHesapNo(), "Ay Sonu: " + getBakiye()));
     }
 }
