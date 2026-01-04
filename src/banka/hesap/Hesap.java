@@ -2,16 +2,16 @@ package banka.hesap;
 
 import banka.islem.IslemGecmisi;
 import java.math.BigDecimal;
-import java.util.ArrayList; // Listeyi kullanmak için gerekli
-import java.util.List;      // Listeyi kullanmak için gerekli
+import java.util.ArrayList;
+import java.util.List;
 
-// Abstract olduğu için Vadesiz ve Tasarruf buradan miras alır
-public abstract class Hesap { 
+// "implements IHesapIslemleri" diyerek sözleşmeyi kabul ettik.
+public abstract class Hesap implements IHesapIslemleri { 
 
     private final String hesapNo;
     private BigDecimal bakiye = BigDecimal.ZERO;
     
-    // YENİ: Vadesiz ve Tasarruf'un ortak kullanacağı işlem defteri
+    // Vadesiz ve Tasarruf'un ortak kullanacağı işlem defteri
     protected List<String> kisiselGecmis = new ArrayList<>();
 
     protected Hesap(String hesapNo) {
@@ -21,12 +21,14 @@ public abstract class Hesap {
     public String getHesapNo() { return hesapNo; }
     public BigDecimal getBakiye() { return bakiye; }
 
+    // --- Interface'den Gelen Zorunlu Metot (Sözleşme Gereği) ---
+    @Override
     public void paraYatir(BigDecimal tutar) {
         if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Tutar pozitif olmalı.");
         }
         bakiye = bakiye.add(tutar);
-        // Her para girişinde otomatik not alalım
+        // Otomatik not al
         gecmisEkle("[GELİR] Para Yatırma: +" + tutar + " TL");
     }
 
@@ -40,26 +42,26 @@ public abstract class Hesap {
         }
     }
 
-    // --- İŞTE KIRMIZILIĞI GİDEREN METOTLAR BURADA ---
+    // --- Ortak Metotlar ---
 
-    // 1. Dışarıdan mesaj eklemek için (Banka.java kullanıyor)
     public void gecmisEkle(String mesaj) {
         kisiselGecmis.add(mesaj);
     }
 
-    // 2. Son eklenen mesajı silmek için (Yükleme yaparken kullanıyoruz)
     public void sonGecmisiSil() {
         if (!kisiselGecmis.isEmpty()) {
             kisiselGecmis.remove(kisiselGecmis.size() - 1);
         }
     }
 
-    // 3. Dosyaya kaydederken listeyi vermek için
     public List<String> getGecmisListesi() {
         return kisiselGecmis;
     }
 
-    // --- DİĞER SOYUT METOTLAR ---
     public abstract void aySonuIslemleri(IslemGecmisi gecmis);
+    
+    // --- Interface'den Gelen Diğer Metot ---
+    // Bunu abstract yapıyoruz ki her hesap (Vadesiz/Tasarruf) kendine özel doldursun.
+    @Override
     public abstract void paraCek(BigDecimal tutar, IslemGecmisi gecmis);
 }
