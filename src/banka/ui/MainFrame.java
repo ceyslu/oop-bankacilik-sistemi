@@ -179,35 +179,75 @@ public class MainFrame extends JFrame {
     // 2.2. EFT EKRANI (Başka Hesaba Transfer)
     // ========================================================================
     private JPanel eftEkraniOlustur() {
-        JPanel p = new JPanel(new GridBagLayout());
-        p.setBorder(BorderFactory.createTitledBorder("Başka Hesaba Transfer (EFT)"));
-        
-        JTextField txtHesap = new JTextField(15);
-        JTextField txtAd = new JTextField(15);
-        JTextField txtTutar = new JTextField(15);
-        JButton btnGonder = new JButton("Gönder");
+    JPanel p = new JPanel(new GridBagLayout());
+    p.setBorder(BorderFactory.createTitledBorder("Başka Hesaba Transfer (EFT)"));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5,5,5,5); gbc.anchor = GridBagConstraints.WEST; gbc.gridx=0; gbc.gridy=0;
+    JTextField txtHesap = new JTextField(15);
+    JTextField txtAd = new JTextField(15);
+    JTextField txtTutar = new JTextField(15);
+    JButton btnGonder = new JButton("Gönder");
 
-        p.add(new JLabel("Alıcı Hesap No:"), gbc); gbc.gridy++; p.add(txtHesap, gbc);
-        gbc.gridy++; p.add(new JLabel("Alıcı Ad Soyad:"), gbc); gbc.gridy++; p.add(txtAd, gbc);
-        gbc.gridy++; p.add(new JLabel("Tutar (TL):"), gbc); gbc.gridy++; p.add(txtTutar, gbc);
-        gbc.gridy++; gbc.fill = GridBagConstraints.HORIZONTAL; p.add(btnGonder, gbc);
+    // --- 1. EKLEME: SADECE RAKAM VE MAKS 6 HANE KISITLAMASI ---
+    txtHesap.addKeyListener(new java.awt.event.KeyAdapter() {
+        public void keyTyped(java.awt.event.KeyEvent evt) {
+            char c = evt.getKeyChar();
+            // Sayı değilse yazma (Silme tuşu hariç)
+            if (!Character.isDigit(c) && c != '\b') {
+                evt.consume();
+            }
+            // 6 karakter dolduysa daha fazla yazma
+            if (txtHesap.getText().length() >= 6) {
+                evt.consume();
+            }
+        }
+    });
+    // -----------------------------------------------------------
 
-        btnGonder.addActionListener(e -> {
-            try {
-                BigDecimal t = new BigDecimal(txtTutar.getText());
-                banka.transferYap(musteri, txtHesap.getText(), txtAd.getText(), t);
-                JOptionPane.showMessageDialog(this, "Para başarıyla gönderildi.");
-                txtHesap.setText(""); txtAd.setText(""); txtTutar.setText("");
-                bilgileriGuncelle();
-                cardLayout.show(mainPanel, "VADESIZ_EKRAN");
-            } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Hata: " + ex.getMessage()); }
-        });
+    GridBagConstraints gbc = new GridBagConstraints();
+    gbc.insets = new Insets(5, 5, 5, 5);
+    gbc.anchor = GridBagConstraints.WEST;
+    gbc.gridx = 0;
+    gbc.gridy = 0;
 
-        return sarmala(p, "VADESIZ_EKRAN");
-    }
+    p.add(new JLabel("Alıcı Hesap No:"), gbc);
+    gbc.gridy++;
+    p.add(txtHesap, gbc);
+    gbc.gridy++;
+    p.add(new JLabel("Alıcı Ad Soyad:"), gbc);
+    gbc.gridy++;
+    p.add(txtAd, gbc);
+    gbc.gridy++;
+    p.add(new JLabel("Tutar (TL):"), gbc);
+    gbc.gridy++;
+    p.add(txtTutar, gbc);
+    gbc.gridy++;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    p.add(btnGonder, gbc);
+
+    btnGonder.addActionListener(e -> {
+        try {
+            // --- 2. EKLEME: BUTONA BASINCA 6 HANE KONTROLÜ ---
+            if (txtHesap.getText().length() != 6) {
+                JOptionPane.showMessageDialog(this, "Hesap numarası 6 haneli olmalıdır!", "Hata", JOptionPane.ERROR_MESSAGE);
+                return; // İşlemi durdur
+            }
+            // -------------------------------------------------
+
+            BigDecimal t = new BigDecimal(txtTutar.getText());
+            banka.transferYap(musteri, txtHesap.getText(), txtAd.getText(), t);
+            JOptionPane.showMessageDialog(this, "Para başarıyla gönderildi.");
+            txtHesap.setText("");
+            txtAd.setText("");
+            txtTutar.setText("");
+            bilgileriGuncelle();
+            cardLayout.show(mainPanel, "VADESIZ_EKRAN");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Hata: " + ex.getMessage());
+        }
+    });
+
+    return sarmala(p, "VADESIZ_EKRAN");
+}
 
     // ========================================================================
     // 2.3. FATURA KAYIT

@@ -4,24 +4,21 @@ import banka.islem.BilgiIslemi;
 import banka.islem.IslemGecmisi;
 import banka.islem.TransferIslemi;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class VadesizHesap extends Hesap {
 
-    // --- YENİ EKLENENLER: Fatura Listesi ve Kişisel Geçmiş ---
+    // Kisisel gecmis listesini buradan SİLDİK, çünkü Hesap.java'dan geliyor.
     private Map<String, BigDecimal> faturalar = new HashMap<>();
-    private List<String> kisiselGecmis = new ArrayList<>();
 
     public VadesizHesap(String hesapNo) {
         super(hesapNo);
-        // Hesap açıldığı anı not alalım
+        // "gecmisEkle" artık Hesap sınıfından miras alındığı için direkt çalışır.
         gecmisEkle("Hesap Oluşturuldu.");
     }
 
-    /* ===================== YENİ: FATURA SİSTEMİ ===================== */
+    /* ===================== FATURA SİSTEMİ (KORUNDU) ===================== */
     
     public void faturaKaydet(String faturaTuru, BigDecimal miktar) {
         if (miktar.compareTo(BigDecimal.ZERO) <= 0) {
@@ -37,7 +34,7 @@ public class VadesizHesap extends Hesap {
         }
         BigDecimal tutar = faturalar.get(faturaTuru);
         
-        // Ödeme yap (kendi paraCek metodumuzu kullanıyoruz)
+        // Ödeme yap (Mevcut paraCek metodunu kullanır)
         paraCek(tutar, null); 
         
         faturalar.remove(faturaTuru); // Listeden sil
@@ -48,9 +45,9 @@ public class VadesizHesap extends Hesap {
         return faturalar;
     }
 
-    /* ===================== MEVCUT: PARA ÇEKME (GÜNCELLENDİ) ===================== */
+    /* ===================== PARA ÇEKME (KORUNDU) ===================== */
     
-    
+    @Override
     public void paraCek(BigDecimal tutar, IslemGecmisi gecmis) {
         // 1. Tutar Kontrolü
         if (tutar == null || tutar.compareTo(BigDecimal.ZERO) <= 0) {
@@ -62,29 +59,28 @@ public class VadesizHesap extends Hesap {
             throw new IllegalArgumentException("Yetersiz Bakiye (Vadesiz)!");
         }
 
-        // 3. Parayı Düş
+        // 3. Parayı Düş (Hesap sınıfındaki metot)
         bakiyeAzalt(tutar);
 
-        // 4. --- YENİ --- Kişisel Geçmişe Yaz (Geldi/Gitti şeklinde)
+        // 4. Kişisel Geçmişe Yaz (Hesap sınıfındaki metot)
         gecmisEkle("[GİDER] Hesaptan Çıkış: -" + tutar + " TL");
 
-        // 5. Global Geçmişe Yaz (Eski sistem çalışmaya devam etsin)
+        // 5. Global Geçmişe Yaz
         if (gecmis != null) {
-            gecmis.ekle(new BilgiIslemi(getHesapNo(), "Para Çekme: " + tutar + " TL"));
+            gecmis.ekle(new banka.islem.ParaCekmeIslemi(getHesapNo(), tutar));
         }
     }
 
-    /* ===================== MEVCUT: PARA YATIRMA (GÜNCELLENDİ) ===================== */
+    /* ===================== PARA YATIRMA (KORUNDU) ===================== */
     
     @Override
     public void paraYatir(BigDecimal tutar) {
-        super.paraYatir(tutar);
-        // Para yatınca da geçmişe yazsın (Özellikle 1000 TL bonus için önemli)
-        gecmisEkle("[GELİR] Hesaba Giriş: +" + tutar + " TL");
+        super.paraYatir(tutar); // Hesap.java'daki paraYatir çalışır (Bakiye artar + Geçmişe eklenir)
+        // Ekstra bir şey yapmaya gerek yok, super metot hallediyor.
     }
 
-    /* ===================== TRANSFER (AYNEN KORUNDU) ===================== */
-    
+    /* ===================== TRANSFER (KORUNDU) ===================== */
+    // MainFrame bu metodu kullanıyor, o yüzden kesinlikle kalmalı!
     public void transferEt(Hesap alici, BigDecimal tutar, IslemGecmisi gecmis) {
         if (alici == null) throw new IllegalArgumentException("Alıcı hesap boş olamaz.");
         
@@ -98,9 +94,9 @@ public class VadesizHesap extends Hesap {
         }
     }
 
-    /* ===================== YENİ: GEÇMİŞİ METİN OLARAK ALMA ===================== */
-    // MainFrame'de hata veren kısım burasıydı, şimdi ekliyoruz.
+    /* ===================== EKRANA YAZDIRMA ===================== */
     
+    // MainFrame'in geçmişi göstermek için çağırdığı metot
     public String getIslemGecmisi() {
         if (kisiselGecmis.isEmpty()) return "Henüz işlem yok.";
         
@@ -110,11 +106,6 @@ public class VadesizHesap extends Hesap {
             sb.append(kisiselGecmis.get(i)).append("\n");
         }
         return sb.toString();
-    }
-    
-    // Yardımcı metot: Listeye ekleme yapar
-    private void gecmisEkle(String mesaj) {
-        kisiselGecmis.add(mesaj);
     }
 
     @Override
