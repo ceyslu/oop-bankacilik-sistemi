@@ -1,0 +1,99 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+' === SADE GÖRÜNÜM ===
+hide methods
+hide fields
+hide empty members
+
+' =======================
+'        PACKAGES
+' =======================
+
+package "banka.hesap" {
+  abstract class Hesap
+  class VadesizHesap
+  class TasarrufHesabi
+  class AltinCuzdani
+  interface IHesapIslemleri
+  interface TransferEdilebilir
+}
+
+package "banka.islem" {
+  interface Islem
+  class IslemGecmisi
+  class ParaYatirmaIslemi
+  class ParaCekmeIslemi
+  class TransferIslemi
+  class UcretIslemi
+  class AltinAlimIslemi
+  class BilgiIslemi
+  class IslemGecmisiIslemi
+}
+
+package "banka.model" {
+  class Musteri
+}
+
+package "banka.service" {
+  class Banka
+}
+
+package "banka.ui" {
+  class LoginFrame
+  class MainFrame
+}
+
+package "banka.util" {
+  class MetinUtil
+  class Sifreleme
+}
+
+package "banka.test" {
+  class BankaTest
+}
+
+' =======================
+'      RELATIONSHIPS
+' =======================
+
+' --- OOP core ---
+IHesapIslemleri <|.. Hesap
+Hesap <|-- VadesizHesap
+Hesap <|-- TasarrufHesabi
+TransferEdilebilir <|.. VadesizHesap
+
+' --- Musteri sahipliği ---
+Musteri *-- VadesizHesap : vadesiz
+Musteri *-- TasarrufHesabi : tasarruf
+Musteri *-- IslemGecmisi : vadesizGecmis
+Musteri *-- IslemGecmisi : tasarrufGecmis
+
+' --- Banka yönetimi ---
+Banka o-- "0..*" Musteri : musteriler
+Banka *-- IslemGecmisi : islemGecmisi
+
+' --- Tasarruf altın cüzdanı (etiket eklendi) ---
+TasarrufHesabi *-- AltinCuzdani : altinCuzdan
+
+' --- Islem hiyerarşisi ---
+Islem <|.. ParaYatirmaIslemi
+Islem <|.. ParaCekmeIslemi
+Islem <|.. TransferIslemi
+Islem <|.. UcretIslemi
+Islem <|.. AltinAlimIslemi
+Islem <|.. BilgiIslemi
+Islem <|.. IslemGecmisiIslemi
+
+IslemGecmisi o-- "0..*" Islem : islemler
+
+' --- UI / util / test bağımlılıkları (minimal) ---
+LoginFrame ..> Banka
+MainFrame ..> Banka
+LoginFrame ..> Sifreleme
+Banka ..> MetinUtil
+BankaTest ..> Banka
+
+@enduml

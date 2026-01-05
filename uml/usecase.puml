@@ -1,0 +1,58 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Müşteri" as M
+actor "Sistem" as S
+
+rectangle "Dijital Bankacılık Sistemi" {
+
+  ' ===== 1) Kimlik =====
+  usecase "Üye Ol" as UC_UYE
+  usecase "Giriş Yap" as UC_GIRIS
+
+  ' ===== 2) Hesap Seçimi (ön koşul) =====
+  usecase "Hesap Seç\n(Vadesiz / Tasarruf)" as UC_SEC
+
+  ' ===== 3) İşlemler =====
+  usecase "İşlem Geçmişini\nGörüntüle" as UC_GECMIS
+  usecase "Hesaplarım Arası Transfer\n(Vadesiz ↔ Tasarruf)" as UC_VIRMAN
+  usecase "Başka Kişiye Transfer (EFT)" as UC_EFT
+  usecase "Altın Al (Tasarruf)" as UC_ALTIN
+  usecase "Fatura Kaydet" as UC_FATK
+  usecase "Fatura Öde" as UC_FATO
+
+  ' ===== 4) Sistem =====
+  usecase "işlem geçmişi" as UC_AYSONU
+
+  ' ===== Görsel hizalama (daha düzgün dursun) =====
+  UC_UYE -[hidden]-> UC_GIRIS
+  UC_GIRIS -[hidden]-> UC_SEC
+
+  UC_GECMIS -[hidden]-> UC_VIRMAN
+  UC_VIRMAN -[hidden]-> UC_EFT
+  UC_EFT -[hidden]-> UC_ALTIN
+  UC_ALTIN -[hidden]-> UC_FATK
+  UC_FATK -[hidden]-> UC_FATO
+}
+
+' ===== Aktör bağlantıları (az ve temiz) =====
+M --> UC_UYE
+M --> UC_GIRIS
+M --> UC_SEC
+
+M --> UC_GECMIS
+M --> UC_VIRMAN
+M --> UC_EFT
+M --> UC_ALTIN
+M --> UC_FATK
+M --> UC_FATO
+
+S --> UC_AYSONU
+
+' ===== Minimal mantık ilişkisi =====
+' Fatura ödeme, kayıtlı fatura gerektirir
+UC_FATO ..> UC_FATK : <<extend>>
+
+@enduml

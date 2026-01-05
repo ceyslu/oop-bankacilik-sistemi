@@ -18,7 +18,7 @@ public class VadesizHesap extends Hesap {
         gecmisEkle("Hesap Oluşturuldu.");
     }
 
-    /* ===================== FATURA SİSTEMİ (KORUNDU) ===================== */
+    /* ===================== FATURA SİSTEMİ KORUNDU ===================== */
     
     public void faturaKaydet(String faturaTuru, BigDecimal miktar) {
         if (miktar.compareTo(BigDecimal.ZERO) <= 0) {

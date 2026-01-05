@@ -51,9 +51,9 @@ public class MainFrame extends JFrame {
         add(mainPanel);
     }
 
-    // ========================================================================
+  
     // 1. ANA MENÜ
-    // ========================================================================
+  
     private JPanel anaMenuOlustur() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(new Color(240, 245, 250));
@@ -96,9 +96,8 @@ public class MainFrame extends JFrame {
         return wrapper;
     }
 
-    // ========================================================================
     // 2. VADESİZ HESAP EKRANI (HESAP NO VE BAKİYE BURADA GÖRÜNECEK)
-    // ========================================================================
+   
     private JPanel vadesizEkraniOlustur() {
         JPanel p = new JPanel(new BorderLayout());
         p.setBackground(Color.WHITE);
@@ -161,10 +160,8 @@ public class MainFrame extends JFrame {
 
         return p;
     }
-
-    // ========================================================================
     // 2.1. VİRMAN EKRANI
-    // ========================================================================
+    
     private JPanel virmanEkraniOlustur() {
         return basitFormOlustur("Vadesiz Hesaptan -> Tasarruf Hesabına", "Gönderilecek Tutar (TL):",
             tutar -> {
@@ -175,9 +172,8 @@ public class MainFrame extends JFrame {
             }, "VADESIZ_EKRAN");
     }
 
-    // ========================================================================
     // 2.2. EFT EKRANI (Başka Hesaba Transfer)
-    // ========================================================================
+    
     private JPanel eftEkraniOlustur() {
     JPanel p = new JPanel(new GridBagLayout());
     p.setBorder(BorderFactory.createTitledBorder("Başka Hesaba Transfer (EFT)"));
@@ -201,7 +197,7 @@ public class MainFrame extends JFrame {
             }
         }
     });
-    // -----------------------------------------------------------
+  
 
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.insets = new Insets(5, 5, 5, 5);
@@ -231,7 +227,7 @@ public class MainFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Hesap numarası 6 haneli olmalıdır!", "Hata", JOptionPane.ERROR_MESSAGE);
                 return; // İşlemi durdur
             }
-            // -------------------------------------------------
+            
 
             BigDecimal t = new BigDecimal(txtTutar.getText());
             banka.transferYap(musteri, txtHesap.getText(), txtAd.getText(), t);
@@ -249,9 +245,7 @@ public class MainFrame extends JFrame {
     return sarmala(p, "VADESIZ_EKRAN");
 }
 
-    // ========================================================================
-    // 2.3. FATURA KAYIT
-    // ========================================================================
+    // 2.3. FATURA KAYIT EKRANI
     private JPanel faturaKayitEkraniOlustur() {
         JPanel p = new JPanel(new GridBagLayout());
         p.setBorder(BorderFactory.createTitledBorder("Yeni Fatura Kaydet"));
