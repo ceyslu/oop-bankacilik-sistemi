@@ -36,4 +36,5 @@ public class Musteri {
 
     public IslemGecmisi getVadesizGecmis() { return vadesizGecmis; }
     public IslemGecmisi getTasarrufGecmis() { return tasarrufGecmis; }
+    
 }
